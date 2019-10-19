@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: org.xhtmlrenderer:core-renderer:R8-final">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/xhtmlrenderer/core-renderer/R8-final/core-renderer-R8-final.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/org/xhtmlrenderer/core-renderer/R8-final/core-renderer-R8-final-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/xhtmlrenderer/core-renderer/R8-final/core-renderer-R8-final-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: TogetherApplicationFramework:util:7.1-1-community">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/TogetherApplicationFramework/util/7.1-1-community/util-7.1-1-community.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/TogetherApplicationFramework/util/7.1-1-community/util-7.1-1-community-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/TogetherApplicationFramework/util/7.1-1-community/util-7.1-1-community-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

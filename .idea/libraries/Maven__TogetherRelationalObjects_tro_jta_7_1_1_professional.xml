@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: TogetherRelationalObjects:tro-jta:7.1-1-professional">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/TogetherRelationalObjects/tro-jta/7.1-1-professional/tro-jta-7.1-1-professional.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/TogetherRelationalObjects/tro-jta/7.1-1-professional/tro-jta-7.1-1-professional-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/TogetherRelationalObjects/tro-jta/7.1-1-professional/tro-jta-7.1-1-professional-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

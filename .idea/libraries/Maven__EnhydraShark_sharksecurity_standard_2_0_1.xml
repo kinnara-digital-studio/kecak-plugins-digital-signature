@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: EnhydraShark:sharksecurity-standard:2.0.1">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/EnhydraShark/sharksecurity-standard/2.0.1/sharksecurity-standard-2.0.1.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/EnhydraShark/sharksecurity-standard/2.0.1/sharksecurity-standard-2.0.1-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/EnhydraShark/sharksecurity-standard/2.0.1/sharksecurity-standard-2.0.1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

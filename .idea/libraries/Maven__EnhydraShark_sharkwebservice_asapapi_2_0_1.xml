@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: EnhydraShark:sharkwebservice-asapapi:2.0.1">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/EnhydraShark/sharkwebservice-asapapi/2.0.1/sharkwebservice-asapapi-2.0.1.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/EnhydraShark/sharkwebservice-asapapi/2.0.1/sharkwebservice-asapapi-2.0.1-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/EnhydraShark/sharkwebservice-asapapi/2.0.1/sharkwebservice-asapapi-2.0.1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
