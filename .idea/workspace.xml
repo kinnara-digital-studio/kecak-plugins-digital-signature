@@ -1,7 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="d5de0ee9-c93a-4bfd-a34a-bfffa8d1b07f" name="Default Changelist" comment="" />
+    <list default="true" id="d5de0ee9-c93a-4bfd-a34a-bfffa8d1b07f" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/kecak-plugins-digital-signature.iml" beforeDir="false" afterPath="$PROJECT_DIR$/kecak-plugins-digital-signature.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/kinnara/kecakplugins/digitalsignature/DigitalSignature.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/kinnara/kecakplugins/digitalsignature/DigitalSignature.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/message/digitalSignature.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/message/digitalSignature.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/properties/digitalSignature.json" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/properties/digitalSignature.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/templates/digitalSignature.ftl" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/templates/digitalSignature.ftl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/META-INF/MANIFEST.MF" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/kinnara/kecakplugins/digitalsignature/Activator.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/kinnara/kecakplugins/digitalsignature/Activator.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/kinnara/kecakplugins/digitalsignature/DigitalSignature.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/kinnara/kecakplugins/digitalsignature/DigitalSignature.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/message/digitalSignature.properties" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/message/digitalSignature.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/properties/digitalSignature.json" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/properties/digitalSignature.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/templates/digitalSignature.ftl" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/templates/digitalSignature.ftl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/kecak-plugins-digital-signature-5.0-SNAPSHOT.jar" beforeDir="false" afterPath="$PROJECT_DIR$/target/kecak-plugins-digital-signature-5.0-SNAPSHOT.jar" afterDir="false" />
+    </list>
     <ignored path="$PROJECT_DIR$/target/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -23,20 +38,12 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/java/com/kinnara/kecakplugins/digitalsignature/DigitalSignature.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="348">
-              <caret line="36" column="81" selection-start-line="36" selection-start-column="81" selection-end-line="36" selection-end-column="81" />
+            <state relative-caret-position="297">
+              <caret line="80" column="13" selection-start-line="80" selection-start-column="13" selection-end-line="80" selection-end-column="13" />
               <folding>
                 <element signature="imports" expanded="true" />
-                <element signature="e#1421#1422#0" expanded="true" />
-                <element signature="e#1463#1464#0" expanded="true" />
-                <element signature="e#1511#1512#0" expanded="true" />
-                <element signature="e#1584#1585#0" expanded="true" />
-                <element signature="e#1636#1637#0" expanded="true" />
-                <element signature="e#1691#1692#0" expanded="true" />
-                <element signature="e#1737#1738#0" expanded="true" />
-                <element signature="e#1774#1775#0" expanded="true" />
-                <element signature="e#1824#1825#0" expanded="true" />
-                <element signature="e#1867#1868#0" expanded="true" />
+                <element signature="e#3653#3654#0" expanded="true" />
+                <element signature="e#3726#3727#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -45,8 +52,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/resources/message/digitalSignature.properties">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="153">
-              <caret line="9" column="51" selection-start-line="9" selection-start-column="51" selection-end-line="9" selection-end-column="51" />
+            <state relative-caret-position="119">
+              <caret line="7" column="64" selection-start-line="7" selection-start-column="64" selection-end-line="7" selection-end-column="64" />
             </state>
           </provider>
         </entry>
@@ -54,8 +61,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/resources/properties/digitalSignature.json">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="357">
-              <caret line="21" column="51" selection-start-line="21" selection-start-column="51" selection-end-line="21" selection-end-column="51" />
+            <state relative-caret-position="476">
+              <caret line="28" column="25" selection-start-line="28" selection-start-column="16" selection-end-line="28" selection-end-column="25" />
             </state>
           </provider>
         </entry>
@@ -90,20 +97,32 @@
   <component name="FindInProjectRecents">
     <findStrings>
       <find>&quot;</find>
+      <find>FormLoadOptionsBinder</find>
+      <find>.form-cell</find>
     </findStrings>
     <replaceStrings>
       <replace>'</replace>
     </replaceStrings>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
         <option value="$PROJECT_DIR$/pom.xml" />
         <option value="$PROJECT_DIR$/src/main/java/com/kinnara/kecakplugins/digitalsignature/Activator.java" />
-        <option value="$PROJECT_DIR$/src/main/resources/message/digitalSignature.properties" />
         <option value="$PROJECT_DIR$/src/main/resources/properties/digitalSignature.json" />
+        <option value="$PROJECT_DIR$/src/main/resources/message/digitalSignature.properties" />
         <option value="$PROJECT_DIR$/src/main/java/com/kinnara/kecakplugins/digitalsignature/DigitalSignature.java" />
       </list>
+    </option>
+  </component>
+  <component name="MavenImportPreferences">
+    <option name="importingSettings">
+      <MavenImportingSettings>
+        <option name="importAutomatically" value="true" />
+      </MavenImportingSettings>
     </option>
   </component>
   <component name="ProjectFrameBounds" extendedState="6">
@@ -213,7 +232,7 @@
   <component name="ToolWindowManager">
     <frame x="-7" y="-7" width="1295" height="695" extended-state="6" />
     <layout>
-      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.254251" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.2866397" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Image Layers" order="2" />
       <window_info id="Designer" order="3" />
@@ -250,15 +269,15 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/resources/message/digitalSignature.properties">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="153">
-          <caret line="9" column="51" selection-start-line="9" selection-start-column="51" selection-end-line="9" selection-end-column="51" />
+        <state relative-caret-position="119">
+          <caret line="7" column="64" selection-start-line="7" selection-start-column="64" selection-end-line="7" selection-end-column="64" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/resources/properties/digitalSignature.json">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="357">
-          <caret line="21" column="51" selection-start-line="21" selection-start-column="51" selection-end-line="21" selection-end-column="51" />
+        <state relative-caret-position="476">
+          <caret line="28" column="25" selection-start-line="28" selection-start-column="16" selection-end-line="28" selection-end-column="25" />
         </state>
       </provider>
     </entry>
@@ -278,20 +297,12 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/com/kinnara/kecakplugins/digitalsignature/DigitalSignature.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="348">
-          <caret line="36" column="81" selection-start-line="36" selection-start-column="81" selection-end-line="36" selection-end-column="81" />
+        <state relative-caret-position="297">
+          <caret line="80" column="13" selection-start-line="80" selection-start-column="13" selection-end-line="80" selection-end-column="13" />
           <folding>
             <element signature="imports" expanded="true" />
-            <element signature="e#1421#1422#0" expanded="true" />
-            <element signature="e#1463#1464#0" expanded="true" />
-            <element signature="e#1511#1512#0" expanded="true" />
-            <element signature="e#1584#1585#0" expanded="true" />
-            <element signature="e#1636#1637#0" expanded="true" />
-            <element signature="e#1691#1692#0" expanded="true" />
-            <element signature="e#1737#1738#0" expanded="true" />
-            <element signature="e#1774#1775#0" expanded="true" />
-            <element signature="e#1824#1825#0" expanded="true" />
-            <element signature="e#1867#1868#0" expanded="true" />
+            <element signature="e#3653#3654#0" expanded="true" />
+            <element signature="e#3726#3727#0" expanded="true" />
           </folding>
         </state>
       </provider>
