@@ -1,12 +1,21 @@
 package com.kinnara.kecakplugins.digitalsignature;
 
+import org.joget.apps.app.dao.FormDefinitionDao;
 import org.joget.apps.app.model.AppDefinition;
+import org.joget.apps.app.model.FormDefinition;
 import org.joget.apps.app.service.AppUtil;
+import org.joget.apps.form.dao.FormDataDao;
 import org.joget.apps.form.model.Element;
+import org.joget.apps.form.model.Form;
 import org.joget.apps.form.model.FormBuilderPaletteElement;
 import org.joget.apps.form.model.FormData;
+import org.joget.apps.form.model.FormRow;
 import org.joget.apps.form.service.FileUtil;
+import org.joget.apps.form.service.FormService;
 import org.joget.apps.form.service.FormUtil;
+import org.joget.commons.util.LogUtil;
+import org.joget.workflow.model.service.WorkflowUserManager;
+import org.springframework.context.ApplicationContext;
 
 import java.io.File;
 import java.io.UnsupportedEncodingException;
@@ -14,102 +23,132 @@ import java.net.URLEncoder;
 import java.util.Map;
 
 public class DigitalSignature extends Element implements FormBuilderPaletteElement {
-    @Override
-    public String renderTemplate(FormData formData, Map dataModel) {
-        String template = "digitalSignature.ftl";
+	@Override
+	public String renderTemplate(FormData formData, Map dataModel) {
+		String template = "digitalSignature.ftl";
 
-        String formDefId = (String) getProperty("formDefId");
-        String signatureId = (String) getProperty("fileField");
-        String username = (String) getProperty("username");
+		String formDefId = (String) getProperty("formDefId");
+		String signatureId = (String) getProperty("fileField");
+		String username = (String) getProperty("username");
 
-        String appId = "";
-        String appVersion = "";
+		String appId = "";
+		String appVersion = "";
 
-        AppDefinition appDef = AppUtil.getCurrentAppDefinition();
-        if (appDef != null) {
-            appId = appDef.getId();
-            appVersion = appDef.getVersion().toString();
-        }
+		AppDefinition appDef = AppUtil.getCurrentAppDefinition();
+		if (appDef != null) {
+			appId = appDef.getId();
+			appVersion = appDef.getVersion().toString();
+		}
 
-        String primaryKeyValue = getPrimaryKeyValue(formData);
+		String primaryKeyValue = getPrimaryKeyValue(formData);
 
-        String value = FormUtil.getElementPropertyValue(this, formData);
-        if(value!=null) {
-            String encodedFileName = value;
-            try {
-                encodedFileName = URLEncoder.encode(value, "UTF8").replaceAll("\\+", "%20");
-            } catch (UnsupportedEncodingException ex) {
-                // ignore
-            }
-            if(encodedFileName!=null && !encodedFileName.equals("")) {
-                String fileLocation = FileUtil.getUploadPath(this, primaryKeyValue) + "/" + encodedFileName;
-                File file = new File(fileLocation);
-                if(file.exists()) {
-                    String filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + formDefId + "/" + primaryKeyValue + "/" + encodedFileName + ".";
-                    dataModel.put("pdfFile", filePath);
-                }else {
-                    String filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + formDefId + "/" + primaryKeyValue + "/" + value + ".";
-                    dataModel.put("pdfFile", filePath);
-                }
-            }else {
-                String filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + formDefId + "/" + primaryKeyValue + "/" + value + ".";
-                dataModel.put("pdfFile", filePath);
-            }
-        }else{
-            dataModel.put("pdfFile", "");
-        }
-        dataModel.put("className", getClassName());
-        String html = FormUtil.generateElementHtml(this, formData, template, dataModel);
-        return html;
-    }
+		String value = FormUtil.getElementPropertyValue(this, formData);
+		if(value!=null) {
+			String encodedFileName = value;
+			try {
+				encodedFileName = URLEncoder.encode(value, "UTF8").replaceAll("\\+", "%20");
+			} catch (UnsupportedEncodingException ex) {
+				// ignore
+			}
+			if(encodedFileName!=null && !encodedFileName.equals("")) {
+				String fileLocation = FileUtil.getUploadPath(this, primaryKeyValue) + "/" + encodedFileName;
+				File file = new File(fileLocation);
+				if(file.exists()) {
+					String filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + formDefId + "/" + primaryKeyValue + "/" + encodedFileName + ".";
+					dataModel.put("pdfFile", filePath);
+				}else {
+					String filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + formDefId + "/" + primaryKeyValue + "/" + value + ".";
+					dataModel.put("pdfFile", filePath);
+				}
+			}else {
+				String filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + formDefId + "/" + primaryKeyValue + "/" + value + ".";
+				dataModel.put("pdfFile", filePath);
+			}
+		}else{
+			dataModel.put("pdfFile", "");
+		}
 
-    @Override
-    public String getFormBuilderCategory() {
-        return "Kecak";
-    }
+		//Ambil signature nya
+		ApplicationContext appContext = AppUtil.getApplicationContext();
+		FormDataDao formDataDao = (FormDataDao)appContext.getBean("formDataDao");
+		WorkflowUserManager wum = (WorkflowUserManager) AppUtil.getApplicationContext().getBean("workflowUserManager");
+		String currentUser = wum.getCurrentUsername();
+		
+		Form form = generateForm(formDefId);
+		String masterPK = formDataDao.findPrimaryKey(form, username, currentUser);
+		FormRow row = formDataDao.load(form, masterPK);
+		LogUtil.info(this.getClass().getName(), row.getProperty(signatureId));
+		dataModel.put("className", getClassName());
+		String html = FormUtil.generateElementHtml(this, formData, template, dataModel);
+		return html;
+	}
 
-    @Override
-    public int getFormBuilderPosition() {
-        return 200;
-    }
+	protected Form generateForm(String formDefId) {
+		// proceed without cache
+		ApplicationContext appContext = AppUtil.getApplicationContext();
+		FormService formService = (FormService) appContext.getBean("formService");
+		FormDefinitionDao formDefinitionDao = (FormDefinitionDao)appContext.getBean("formDefinitionDao");
 
-    @Override
-    public String getFormBuilderIcon() {
-        return "/plugin/org.joget.apps.form.lib.TextField/images/textField_icon.gif";
-    }
+		AppDefinition appDef = AppUtil.getCurrentAppDefinition();
 
-    @Override
-    public String getFormBuilderTemplate() {
-        return "<label class='label' style='position:absolute;top:10px;left:10px;'>Digital Signature</label><div style='border: 5px solid grey;height:100px;background-color:#EFF1F2;color:#C4C7CB;align:center;'><span style='position:absolute;top:10px;left:270px;font-weight:bold;font-size:70px;align:center;'>PDF</span><div>";
-    }
+		if (appDef != null && formDefId != null && !formDefId.isEmpty()) {
+			FormDefinition formDef = formDefinitionDao.loadById(formDefId, appDef);
+			if (formDef != null) {
+				String json = formDef.getJson();
+				return (Form) formService.createElementFromJson(json);
+			}
+		}
+		return null;
+	}
 
-    @Override
-    public String getName() {
-        return "Digital Signature";
-    }
 
-    @Override
-    public String getVersion() {
-        return getClass().getPackage().getImplementationVersion();
-    }
+	@Override
+	public String getFormBuilderCategory() {
+		return "Kecak";
+	}
 
-    @Override
-    public String getDescription() {
-        return "Digital Signature Form Element";
-    }
+	@Override
+	public int getFormBuilderPosition() {
+		return 200;
+	}
 
-    @Override
-    public String getLabel() {
-        return this.getName();
-    }
+	@Override
+	public String getFormBuilderIcon() {
+		return "/plugin/org.joget.apps.form.lib.TextField/images/textField_icon.gif";
+	}
 
-    @Override
-    public String getClassName() {
-        return getClass().getName();
-    }
+	@Override
+	public String getFormBuilderTemplate() {
+		return "<label class='label' style='position:absolute;top:10px;left:10px;'>Digital Signature</label><div style='border: 5px solid grey;height:100px;background-color:#EFF1F2;color:#C4C7CB;align:center;'><span style='position:absolute;top:10px;left:270px;font-weight:bold;font-size:70px;align:center;'>PDF</span><div>";
+	}
 
-    @Override
-    public String getPropertyOptions() {
-        return AppUtil.readPluginResource(getClass().getName(), "/properties/digitalSignature.json", null, true, "/message/digitalSignature");
-    }
+	@Override
+	public String getName() {
+		return "Digital Signature";
+	}
+
+	@Override
+	public String getVersion() {
+		return getClass().getPackage().getImplementationVersion();
+	}
+
+	@Override
+	public String getDescription() {
+		return "Digital Signature Form Element";
+	}
+
+	@Override
+	public String getLabel() {
+		return this.getName();
+	}
+
+	@Override
+	public String getClassName() {
+		return getClass().getName();
+	}
+
+	@Override
+	public String getPropertyOptions() {
+		return AppUtil.readPluginResource(getClass().getName(), "/properties/digitalSignature.json", null, true, "/message/digitalSignature");
+	}
 }
