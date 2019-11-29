@@ -6,6 +6,7 @@ import org.joget.apps.app.model.FormDefinition;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.dao.FormDataDao;
 import org.joget.apps.form.model.Element;
+import org.joget.apps.form.model.FileDownloadSecurity;
 import org.joget.apps.form.model.Form;
 import org.joget.apps.form.model.FormBuilderPaletteElement;
 import org.joget.apps.form.model.FormData;
@@ -22,7 +23,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.Map;
 
-public class DigitalSignature extends Element implements FormBuilderPaletteElement {
+public class DigitalSignature extends Element implements FormBuilderPaletteElement, FileDownloadSecurity {
 	@Override
 	public String renderTemplate(FormData formData, Map dataModel) {
 		String template = "digitalSignature.ftl";
@@ -31,6 +32,12 @@ public class DigitalSignature extends Element implements FormBuilderPaletteEleme
 		String signatureId = (String) getProperty("fileField");
 		String username = (String) getProperty("username");
 
+		String thisFormDefId = "";
+		Form form = FormUtil.findRootForm(this);
+		if (form != null) {
+			thisFormDefId = form.getPropertyString(FormUtil.PROPERTY_ID);
+		}
+		
 		String appId = "";
 		String appVersion = "";
 
@@ -54,15 +61,27 @@ public class DigitalSignature extends Element implements FormBuilderPaletteEleme
 				String fileLocation = FileUtil.getUploadPath(this, primaryKeyValue) + "/" + encodedFileName;
 				File file = new File(fileLocation);
 				if(file.exists()) {
-					String filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + formDefId + "/" + primaryKeyValue + "/" + encodedFileName + ".";
+					String filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + thisFormDefId + "/" + primaryKeyValue + "/" + encodedFileName + ".";
 					dataModel.put("pdfFile", filePath);
 				}else {
-					String filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + formDefId + "/" + primaryKeyValue + "/" + value + ".";
-					dataModel.put("pdfFile", filePath);
+					String filePath;
+					try {
+						filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + thisFormDefId + "/" + primaryKeyValue + "/" + URLEncoder.encode(value,"UTF-8") + ".";
+						dataModel.put("pdfFile", filePath);
+					} catch (UnsupportedEncodingException e) {
+						LogUtil.error(this.getClassName(), e, e.getMessage());
+					}
+					
 				}
 			}else {
-				String filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + formDefId + "/" + primaryKeyValue + "/" + value + ".";
-				dataModel.put("pdfFile", filePath);
+				String filePath;
+				try {
+					filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + thisFormDefId + "/" + primaryKeyValue + "/" + URLEncoder.encode(value,"UTF-8") + ".";
+					dataModel.put("pdfFile", filePath);
+				} catch (UnsupportedEncodingException e) {
+					LogUtil.error(this.getClassName(), e, e.getMessage());
+				}
+				
 			}
 		}else{
 			dataModel.put("pdfFile", "");
@@ -74,11 +93,21 @@ public class DigitalSignature extends Element implements FormBuilderPaletteEleme
 		WorkflowUserManager wum = (WorkflowUserManager) AppUtil.getApplicationContext().getBean("workflowUserManager");
 		String currentUser = wum.getCurrentUsername();
 		
-		Form form = generateForm(formDefId);
-		String masterPK = formDataDao.findPrimaryKey(form, username, currentUser);
-		FormRow row = formDataDao.load(form, masterPK);
+		Form formMaster = generateForm(formDefId);
+		LogUtil.info(this.getClass().getName(), "USERNAME FIELD: "+username);
+		LogUtil.info(this.getClass().getName(), "USERNAME: "+currentUser);
+		LogUtil.info(this.getClass().getName(), "FORM: "+formMaster.getLabel());
+		String masterPK = formDataDao.findPrimaryKey(formMaster, username, currentUser);
+		LogUtil.info(this.getClass().getName(), "Primary Key: "+masterPK);
+		FormRow row = formDataDao.load(formMaster, masterPK);
 		LogUtil.info(this.getClass().getName(), row.getProperty(signatureId));
 		dataModel.put("className", getClassName());
+		try {
+			String signaturePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + formDefId + "/" + masterPK + "/" + URLEncoder.encode(row.getProperty(signatureId),"UTF-8") + ".";
+			dataModel.put("signatureFile", signaturePath);
+		} catch (UnsupportedEncodingException e) {
+			LogUtil.error(this.getClassName(), e, e.getMessage());;
+		}
 		String html = FormUtil.generateElementHtml(this, formData, template, dataModel);
 		return html;
 	}
@@ -95,6 +124,7 @@ public class DigitalSignature extends Element implements FormBuilderPaletteEleme
 			FormDefinition formDef = formDefinitionDao.loadById(formDefId, appDef);
 			if (formDef != null) {
 				String json = formDef.getJson();
+				LogUtil.info(this.getClass().getName(), "FORM JSON: "+json);
 				return (Form) formService.createElementFromJson(json);
 			}
 		}
@@ -150,5 +180,11 @@ public class DigitalSignature extends Element implements FormBuilderPaletteEleme
 	@Override
 	public String getPropertyOptions() {
 		return AppUtil.readPluginResource(getClass().getName(), "/properties/digitalSignature.json", null, true, "/message/digitalSignature");
+	}
+
+	@Override
+	public boolean isDownloadAllowed(Map requestParameters) {
+		// TODO Auto-generated method stub
+		return true;
 	}
 }

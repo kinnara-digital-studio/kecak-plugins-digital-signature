@@ -12,6 +12,7 @@
 	</div>
 <#else>
 	<script type="text/javascript" src="${request.contextPath}/plugin/${className}/pdf.js"/></script>
+	<script type="text/javascript" src="${request.contextPath}/plugin/${className}/fabric.min.js"/></script>
 	<style>
 		.md-btn {
 		    background: #2916c3;
@@ -33,6 +34,16 @@
 		    vertical-align: middle;
 		    font: 500 14px/31px Roboto, sans-serif!important;
 		}
+		.wrapper {
+		    position: relative;
+		    height: 500px;
+		}
+		
+		.wrapper canvas {
+		    position: absolute;
+		    top: 0;
+		    left: 0;
+		}
 	</style>
 	<div id="document-container" style="width:750px;height:600px;overflow-y:scroll;">
 		<div style="text-align:center;background-color: #5480fb;color: #e5e5ef;">
@@ -48,12 +59,15 @@
             &nbsp; &nbsp;
   			<span>Page: <span class="page_num"></span> / <span class="page_count"></span></span>
 		</div>
-		<canvas id="pdf-canvas" width="100%" height="500px"></canvas>
-		
+		<div class="wrapper">
+		<canvas id="the-canvas" width="100%" height="500px" style="display:block;cursor:pointer;cursor: hand;"></canvas>
+		<canvas id="c"></canvas>
+        </div>
+        <i id="item-delete-btn" class="item-btn item-btn-danger md-icon md-light material-icons">clear</i>
+        <i id="item-confirm-btn" class="item-btn item-btn-success md-icon md-light material-icons">check</i>
 		<div class="uk-panel uk-panel-box" id="signature-or-initial">
 			<div class="item">
-				<div class="uk-text-bold">Signature</div>
-				<img src="${signature!?html}" alt="Signature" data-tipe="1" draggable="true">
+				<img src="" alt="Signature" data-tipe="1" draggable="true">
 			</div>
 		</div>
 				
@@ -77,52 +91,78 @@
 			var url = "${request.contextPath}${pdfFile!?html}";
 			
 			pdfjsLib.GlobalWorkerOptions.workerSrc = '${request.contextPath}/plugin/${className}/pdf.worker.js';
-
+			
 			var pdfDoc = null,
 			    pageNum = 1,
 			    pageRendering = false,
 			    pageNumPending = null,
 			    scale = 1,
-			    canvas = document.getElementById('pdf-canvas'),
-			    ctx = canvas.getContext('2d');
-						
+				canvas = document.getElementById('the-canvas'),
+			    fcanvas = document.getElementById('c'),
+			    fobject = null,
+		        gesture = null,
+		        ctx = canvas.getContext('2d');
+	        var dataObjects = []
+		  	var isDragging = false;
+		  	var Pages = 0;
+    		var outside = 0;
+  			var x;
+  			var y;
+ 	 		var add = false;
+  			var pageSignature = 1;
+  			
 			function renderPage(num) {
-			  	pageRendering = true;
-			  	// Using promise to fetch the page
-			  	pdfDoc.getPage(num).then(function(page) {
-				    var viewport = page.getViewport({scale: scale});
-				    canvas.height = viewport.height;
-				    canvas.width = viewport.width;
+				pageRendering = true;
+				// Using promise to fetch the page
+				pdfDoc.getPage(num).then(function(page) {
+					var viewport = page.getViewport({scale: scale});
+					canvas.height = viewport.height;
+					canvas.width = viewport.width;
 			
-				    // Render PDF page into canvas context
-				    var renderContext = {
-				      canvasContext: ctx,
-				      viewport: viewport
-				    };
-			    	var renderTask = page.render(renderContext);
+					// Render PDF page into canvas context
+					var renderContext = {
+					  canvasContext: ctx,
+					  viewport: viewport
+					};
+					var renderTask = page.render(renderContext);
 			
-				    // Wait for rendering to finish
-				    renderTask.promise.then(function() {
-				      	pageRendering = false;
-					      if (pageNumPending !== null) {
-						        // New page rendering is pending
-						        renderPage(pageNumPending);
-						        pageNumPending = null;
-					      }
-				    });
-			  	});
+					// Wait for rendering to finish
+					renderTask.promise.then(function() {
+						pageRendering = false;
+						const signed = JSON.parse(`[]`);
+						if (!fobject) {
+							fcanvas.width  = canvas.width;
+							fcanvas.height = canvas.height;
+								
+							fobject = new fabric.Canvas(fcanvas, {
+								width    : fcanvas.offsetWidth,
+								height   : fcanvas.offsetHeight,
+								selection: false,
+							});
+								
+							fabric.Image.fromURL('${signatureFile!?html}', function(img){
+								fobject.add(img);
+							});
+						}
+							
+						if (pageNumPending !== null) {
+							// New page rendering is pending
+							renderPage(pageNumPending);
+							pageNumPending = null;
+						}
+					});
+				});
 			
-			  	// Update page counters
-			  	$('.page_num').html(num);
+				 // Update page counters
+				 $('.page_num').html(num);
 			}
 			
 			function queueRenderPage(num) {
-				if (pageRendering) {
-					pageNumPending = num;
-					renderPage(num);
-				} else {
-					renderPage(num);
-				}
+			  if (pageRendering) {
+			    pageNumPending = num;
+			  } else {
+			    renderPage(num);
+			  }
 			}
 			
 			function onPrevPage() {
@@ -151,7 +191,9 @@
 					// Initial/first page rendering
 					renderPage(pageNum);
 				}
-			);
+			).catch(e => {
+			    console.log(e);
+			});
 		});
 	
 	</script>
