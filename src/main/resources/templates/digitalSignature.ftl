@@ -183,15 +183,16 @@
 			}
 			$('.next').on('click', onNextPage);
 			
-			pdfjsLib.getDocument(url).promise.then(
-				function(pdfDoc_) {
+			pdfjsLib.getDocument(url)
+			.promise
+			.then(pdfDoc_ => {
 			  		pdfDoc = pdfDoc_;
 			  		$('.page_count').html(pdfDoc.numPages);
 			
 					// Initial/first page rendering
 					renderPage(pageNum);
-				}
-			).catch(e => {
+            })
+			.catch(e => {
 			    console.log(e);
 			});
 		});

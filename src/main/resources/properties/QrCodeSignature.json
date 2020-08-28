@@ -1,0 +1,35 @@
+[
+  {
+    "title": "Qr Code Signature",
+    "properties": [
+
+      {
+        "name": "host",
+        "label": "Host",
+        "type": "textfield",
+        "required": "true"
+      },
+      {
+        "name": "verificationUrl",
+        "label": "Verification URL",
+        "type": "textfield"
+      },
+      {
+        "label": "Data",
+        "type": "header"
+      },
+      {
+        "name": "activityProperties",
+        "label": "Activity Properties",
+        "type": "multiselect",
+        "options": %s
+      },
+      {
+        "name": "workflowVariables",
+        "label": "Workflow Variables",
+        "type": "multiselect",
+        "options": %s
+      }
+    ]
+  }
+]
