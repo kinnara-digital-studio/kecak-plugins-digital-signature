@@ -133,7 +133,7 @@ public class QrCodeSignature extends DefaultApplicationPlugin implements PluginW
     @Nonnull
     private Map<String, Object> getConfiguration() throws RestApiException {
         AppDefinition appDefinition = AppUtil.getCurrentAppDefinition();
-        return Optional.of(appDefinition)
+        return Optional.ofNullable(appDefinition)
                 .map(AppDefinition::getPluginDefaultPropertiesList)
                 .map(Collection::stream)
                 .orElseGet(Stream::empty)
@@ -141,7 +141,7 @@ public class QrCodeSignature extends DefaultApplicationPlugin implements PluginW
                 .findFirst()
                 .map(PluginDefaultProperties::getPluginProperties)
                 .map(PropertyUtil::getPropertiesValueFromJson)
-                .orElseThrow(() -> new RestApiException(HttpServletResponse.SC_FORBIDDEN, "Missing configuration"));
+                .orElseThrow(() -> new RestApiException(HttpServletResponse.SC_FORBIDDEN, "Missing application configuration"));
     }
 
     @Nonnull
