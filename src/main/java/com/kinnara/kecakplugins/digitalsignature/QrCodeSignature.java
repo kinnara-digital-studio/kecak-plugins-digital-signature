@@ -130,11 +130,13 @@ public class QrCodeSignature extends DefaultApplicationPlugin implements PluginW
         return null;
     }
 
+    @Nonnull
     private Map<String, Object> getConfiguration() throws RestApiException {
         AppDefinition appDefinition = AppUtil.getCurrentAppDefinition();
-        return appDefinition
-                .getPluginDefaultPropertiesList()
-                .stream()
+        return Optional.of(appDefinition)
+                .map(AppDefinition::getPluginDefaultPropertiesList)
+                .map(Collection::stream)
+                .orElseGet(Stream::empty)
                 .filter(p -> p.getId().equals(getClassName()))
                 .findFirst()
                 .map(PluginDefaultProperties::getPluginProperties)
@@ -142,6 +144,7 @@ public class QrCodeSignature extends DefaultApplicationPlugin implements PluginW
                 .orElseThrow(() -> new RestApiException(HttpServletResponse.SC_FORBIDDEN, "Missing configuration"));
     }
 
+    @Nonnull
     private String getHost() throws RestApiException {
         return Optional.of("host")
                 .map(getConfiguration()::get)
@@ -150,6 +153,7 @@ public class QrCodeSignature extends DefaultApplicationPlugin implements PluginW
                 .orElseThrow(() -> new RestApiException(HttpServletResponse.SC_FORBIDDEN, "Missing [host] configuration"));
     }
 
+    @Nonnull
     private String getVerificationUrl() throws RestApiException {
         return Optional.of("verificationUrl")
                 .map(getConfiguration()::get)
