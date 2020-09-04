@@ -247,6 +247,17 @@ public interface Unclutter {
         return throwableFunction.onException(failoverFunction);
     }
 
+    /**
+     *
+     * @param throwablePredicate
+     * @param <T>
+     * @param <E>
+     * @return
+     */
+    default <T, E extends Exception> Predicate<T> throwablePredicate(ThrowablePredicate<T, ? extends E> throwablePredicate) {
+        return throwablePredicate;
+    }
+
     // Extension for functional interfaces
 
     @FunctionalInterface

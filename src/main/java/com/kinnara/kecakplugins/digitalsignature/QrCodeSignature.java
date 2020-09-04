@@ -203,37 +203,31 @@ public class QrCodeSignature extends DefaultApplicationPlugin implements PluginW
         long appVersion = appDefinition.getVersion();
 
         JSONObject jsonContent = new JSONObject();
-        try {
+
+        if(info != null) {
             getActivityProperties()
                     .stream()
+                    .filter(Objects::nonNull)
                     .map(throwableFunction(s -> info.getClass().getMethod(s)))
-                    .forEach(throwableConsumer(method -> Optional.of(method.getName())
+                    .filter(Objects::nonNull)
+                    .forEach(throwableConsumer(method -> Optional.of(method)
+                            .map(Method::getName)
                             .map(s -> s.replaceAll("^get", ""))
                             .map(this::decapitalize)
                             .ifPresent(throwableConsumer(s -> jsonContent.put(s, method.invoke(info))))));
-
-            Collection<WorkflowVariable> variables = Optional.of(activityId)
-                    .map(workflowManager::getActivityVariableList)
-                    .orElseGet(Collections::emptyList);
-
-            for(final String variable : getWorkflowVariables()) {
-                String value = variables
-                        .stream()
-                        .filter(wVar -> Optional.of(wVar)
-                                .map(WorkflowVariable::getName)
-                                .map(variable::equals)
-                                .orElse(false))
-                        .findAny()
-                        .map(WorkflowVariable::getVal)
-                        .map(String::valueOf)
-                        .orElse("");
-
-                jsonContent.put(variable, value);
-            }
-        } catch (JSONException e) {
-            throw new RestApiException(e);
         }
 
+        Collection<String> workflowVariables = getWorkflowVariables();
+        Optional.of(activityId)
+                .map(workflowManager::getActivityVariableList)
+                .map(Collection::stream)
+                .orElseGet(Stream::empty)
+                .filter(v -> Optional.of(v)
+                        .map(WorkflowVariable::getName)
+                        .map(workflowVariables::contains)
+                        .orElse(false))
+                .findAny()
+                .ifPresent(throwableConsumer(v -> jsonContent.put(v.getName(), v.getVal())));
 
         try {
             String content = host + "/web/json/app/" + appId + "/" + appVersion + "/plugin/" + QrCodeSignature.class.getName() + "/service?action=verify&data=" + URLEncoder.encode(SecurityUtil.encrypt(jsonContent.toString()), "UTF-8");
