@@ -15,7 +15,6 @@ public class Activator implements BundleActivator {
 
         //Register plugin here
         registrationList.add(context.registerService(DigitalSignature.class.getName(), new DigitalSignature(), null));
-        registrationList.add(context.registerService(QrCodeSignature.class.getName(), new QrCodeSignature(), null));
     }
 
     public void stop(BundleContext context) {
