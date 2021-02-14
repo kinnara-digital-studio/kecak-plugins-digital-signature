@@ -28,9 +28,9 @@ public class DigitalSignature extends Element implements FormBuilderPaletteEleme
 	public String renderTemplate(FormData formData, Map dataModel) {
 		String template = "digitalSignature.ftl";
 
-		String formDefId = (String) getProperty("formDefId");
-		String signatureId = (String) getProperty("fileField");
-		String username = (String) getProperty("username");
+		String formDefId = getPropertyString("formDefId");
+		String signatureId = getPropertyString("fileField");
+		String username = getPropertyString("username");
 
 		String thisFormDefId = "";
 		Form form = FormUtil.findRootForm(this);
@@ -154,7 +154,7 @@ public class DigitalSignature extends Element implements FormBuilderPaletteEleme
 
 	@Override
 	public String getName() {
-		return "Digital Signature";
+		return "(Deprecated) Digital Signature";
 	}
 
 	@Override
@@ -164,7 +164,7 @@ public class DigitalSignature extends Element implements FormBuilderPaletteEleme
 
 	@Override
 	public String getDescription() {
-		return "Digital Signature Form Element";
+		return getClass().getPackage().getImplementationTitle();
 	}
 
 	@Override
