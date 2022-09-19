@@ -1,0 +1,28 @@
+[
+  {
+    title: '@@qrCode.title@@',
+    properties : [
+      {
+        name : 'id',
+        label : '@@qrCode.id@@',
+        type : 'textfield',
+        required: 'True',
+        regex_validation : '^[a-zA-Z0-9_]+$',
+        validation_message : '@@qrCode.invalidId@@'
+      },
+      {
+        name : 'label',
+        label : '@@qrCode.label@@',
+        type : 'textfield',
+        value : 'QR Code'
+      },
+      {
+        name : 'qrString',
+        description : '@@qrCode.qrString.desc@@',
+        label : '@@qrCode.qrString.value@@',
+        required : 'True',
+        type : 'textfield'
+      }
+    ]
+  }
+]
