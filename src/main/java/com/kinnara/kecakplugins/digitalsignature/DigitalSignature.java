@@ -23,6 +23,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.Map;
 
+@Deprecated
 public class DigitalSignature extends Element implements FormBuilderPaletteElement, FileDownloadSecurity {
 	@Override
 	public String renderTemplate(FormData formData, Map dataModel) {
