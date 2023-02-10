@@ -7,6 +7,12 @@
     <version>1.0.0</version>
     <name>kecak-plugins-digital-signature</name>
     <url>http://www.kecak.org</url>
+    <scm>
+        <connection>scm:git:ssh://git@gitlab.com:kinnarastudio/kecak-plugins-digital-signature.git</connection>
+        <developerConnection>scm:git:ssh://git@gitlab.com:kinnarastudio/kecak-plugins-digital-signature.git</developerConnection>
+        <url>ssh://git@gitlab.com:kinnarastudio/kecak-plugins-digital-signature.git</url>
+        <tag>HEAD</tag>
+    </scm>
     <build>
         <plugins>
             <plugin>
@@ -70,13 +76,66 @@
                     </instructions>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>buildnumber-maven-plugin</artifactId>
+                <version>1.4</version>
+                <executions>
+                    <execution>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>create</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <doCheck>false</doCheck>
+                    <doUpdate>false</doUpdate>
+                    <revisionOnScmFailure>0</revisionOnScmFailure>
+                    <shortRevisionLength>8</shortRevisionLength>
+                    <timestampFormat>{0,date,yyyy}</timestampFormat>
+                </configuration>
+            </plugin>
         </plugins>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>**/*.properties</exclude>
+                </excludes>
+            </resource>
+        </resources>
     </build>
     <repositories>
-	    <repository>
-	        <id>jitpack.io</id>
-	        <url>https://jitpack.io</url>
-	    </repository>
+
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+<!--            <url>https://java.sun.com/products/jta</url>-->
+        </repository>
+        <repository>
+            <id>GroupDocsJavaAPI</id>
+            <name>GroupDocs Java API</name>
+            <url>https://repository.groupdocs.com/repo/</url>
+        </repository>
+<!--        <repository>-->
+<!--            <id>com.e-iceblue</id>-->
+<!--            <name>e-iceblue</name>-->
+<!--            <url>https://repo.e-iceblue.com/nexus/content/groups/public/</url>-->
+<!--        </repository>-->
+<!--        <repository>-->
+<!--            <id>AsposeJavaAPI</id>-->
+<!--            <name>Aspose Java API</name>-->
+<!--            <url>https://releases.aspose.com/java/repo/</url>-->
+<!--        </repository>-->
 	</repositories>
     <dependencies>
         <dependency>
@@ -100,8 +159,14 @@
         <dependency>
             <groupId>org.joget</groupId>
             <artifactId>wflow-core</artifactId>
-            <version>5.0-SNAPSHOT</version>
+            <version>7.0-SNAPSHOT</version>
             <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>javax.servlet</groupId>
+                    <artifactId>javax.servlet-api</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!-- Change plugin specific dependencies here -->
         <dependency>
@@ -126,14 +191,64 @@
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
-            <version>3.0-alpha-1</version>
+            <artifactId>jsp-api</artifactId>
+            <version>2.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>displaytag</groupId>
+            <artifactId>displaytag</artifactId>
+            <version>1.2</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.servlet.jsp</groupId>
+            <artifactId>jsp-api</artifactId>
+            <version>2.0</version>
         </dependency>
         <dependency>
 	        <groupId>com.github.kenglxn.qrgen</groupId>
 	        <artifactId>javase</artifactId>
 	        <version>2.6.0</version>
 	    </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.aspose</groupId>-->
+<!--            <artifactId>aspose-pdf</artifactId>-->
+<!--            <version>22.12</version>-->
+<!--        </dependency>-->
+<!--        <dependency>-->
+<!--            <groupId>e-iceblue</groupId>-->
+<!--            <artifactId>spire.pdf</artifactId>-->
+<!--            <version>9.1.4</version>-->
+<!--            <exclusions>-->
+<!--                <exclusion>-->
+<!--                    <groupId>javax.transaction</groupId>-->
+<!--                    <artifactId>jta</artifactId>-->
+<!--                </exclusion>-->
+<!--            </exclusions>-->
+<!--        </dependency>-->
+        <dependency>
+            <groupId>com.groupdocs</groupId>
+            <artifactId>groupdocs-signature</artifactId>
+            <version>20.9</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>javax.transaction</groupId>
+                    <artifactId>jta</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
         <!-- End change plugin specific dependencies here -->
     </dependencies>
+
+    <distributionManagement>
+        <repository>
+            <id>internal</id>
+            <url>http://dev.joget.org/archiva/repository/internal</url>
+        </repository>
+        <snapshotRepository>
+            <id>snapshots</id>
+            <url>http://dev.joget.org/archiva/repository/snapshots</url>
+        </snapshotRepository>
+    </distributionManagement>
 </project>
