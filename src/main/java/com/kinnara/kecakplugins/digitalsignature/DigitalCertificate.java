@@ -57,46 +57,51 @@ public class DigitalCertificate extends FileUpload {
 
     public FormRowSet formatData(FormData formData) {
 
-        String file = FormUtil.getElementPropertyValue(this, formData);
-        LogUtil.info(getClassName(), "filepath to tomcat : " + file);
+        String filePath = FormUtil.getElementPropertyValue(this, formData);
+        LogUtil.info(getClassName(), "filepath to tomcat : " + filePath);
         //get uploaded file from app_temp
-        File fileObj = FileManager.getFileByPath(file);
-        Signature signature = new Signature(String.valueOf(fileObj));
-        try {
-            File fileCert = ResourceUtils.getFile("/resources/certificate.pfx");
-            DigitalSignOptions options = new DigitalSignOptions(String.valueOf(fileCert));
-            options.setReason("Sign");
-            options.setContact("JohnSmith");
-            options.setLocation("Office1");
+        LogUtil.info(getClassName(), "new plugins 13");
+        File fileObj = FileManager.getFileByPath(filePath);
+        String path = FileManager.getBaseDirectory();
+        LogUtil.info(getClassName(), "signature : " + fileObj.getName());
+        LogUtil.info(getClassName(), "signature string value of : " + fileObj.toString());
+        LogUtil.info(getClassName(), "base directory : " + path);
+        Signature signature = new Signature(fileObj.toString());
 
-            // image as digital certificate appearance on document pages
-            options.setImageFilePath("sample.jpg");
-            options.setAllPages(true);
-            options.setWidth(80);
-            options.setHeight(60);
-            options.setVerticalAlignment(VerticalAlignment.Bottom);
-            options.setHorizontalAlignment(HorizontalAlignment.Right);
-            Padding padding = new Padding();
-            padding.setBottom(10);
-            padding.setRight(10);
-            options.setMargin(padding);
-            SignResult signResult = signature.sign(file, options);
-            //add signresult tp form data.
-//            formData = FormUtil.
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+//        try {
+//            File fileCert = ResourceUtils.getFile("/resources/certificate.pfx");
+//            DigitalSignOptions options = new DigitalSignOptions(String.valueOf(fileCert));
+//            options.setReason("Sign");
+//            options.setContact("JohnSmith");
+//            options.setLocation("Office1");
+//
+//            // image as digital certificate appearance on document pages
+//            options.setImageFilePath("sample.jpg");
+//            options.setAllPages(true);
+//            options.setWidth(80);
+//            options.setHeight(60);
+//            options.setVerticalAlignment(VerticalAlignment.Bottom);
+//            options.setHorizontalAlignment(HorizontalAlignment.Right);
+//            Padding padding = new Padding();
+//            padding.setBottom(10);
+//            padding.setRight(10);
+//            options.setMargin(padding);
+//            SignResult signResult = signature.sign(filePath, options);
+//            //add signresult tp form data.
+////            formData = FormUtil.
+//        } catch (FileNotFoundException e) {
+//            throw new RuntimeException(e);
+//        } catch (Exception e) {
+//            throw new RuntimeException(e);
+//        }
 
-
-        if(getStoreBinder() == null) {
+//        if(getStoreBinder() == null) {
             return super.formatData(formData);
-        }
+//        }
 
-        FormStoreBinder formStoreBinder = FormUtil.findStoreBinder(this);
-        FormRowSet rowSet = formStoreBinder.store(this, new FormRowSet(), formData);
-        return rowSet;
+//        FormStoreBinder formStoreBinder = FormUtil.findStoreBinder(this);
+//        FormRowSet rowSet = formStoreBinder.store(this, new FormRowSet(), formData);
+//        return rowSet;
 //        return new FormRowSet();
     }
 
