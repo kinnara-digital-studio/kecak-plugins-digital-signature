@@ -119,23 +119,22 @@
         <repository>
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
-<!--            <url>https://java.sun.com/products/jta</url>-->
         </repository>
-        <repository>
-            <id>GroupDocsJavaAPI</id>
-            <name>GroupDocs Java API</name>
-            <url>https://repository.groupdocs.com/repo/</url>
-        </repository>
+<!--        <repository>-->
+<!--            <id>GroupDocsJavaAPI</id>-->
+<!--            <name>GroupDocs Java API</name>-->
+<!--            <url>https://repository.groupdocs.com/repo/</url>-->
+<!--        </repository>-->
 <!--        <repository>-->
 <!--            <id>com.e-iceblue</id>-->
 <!--            <name>e-iceblue</name>-->
 <!--            <url>https://repo.e-iceblue.com/nexus/content/groups/public/</url>-->
 <!--        </repository>-->
-<!--        <repository>-->
-<!--            <id>AsposeJavaAPI</id>-->
-<!--            <name>Aspose Java API</name>-->
-<!--            <url>https://releases.aspose.com/java/repo/</url>-->
-<!--        </repository>-->
+        <repository>
+            <id>AsposeJavaAPI</id>
+            <name>Aspose Java API</name>
+            <url>https://releases.aspose.com/java/repo/</url>
+        </repository>
 	</repositories>
     <dependencies>
         <dependency>
@@ -184,11 +183,11 @@
             <artifactId>core</artifactId>
             <version>3.4.0</version>
         </dependency>
-        <dependency>
-            <groupId>com.google.zxing</groupId>
-            <artifactId>javase</artifactId>
-            <version>3.4.0</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.google.zxing</groupId>-->
+<!--            <artifactId>javase</artifactId>-->
+<!--            <version>3.4.0</version>-->
+<!--        </dependency>-->
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>jsp-api</artifactId>
@@ -200,21 +199,21 @@
             <artifactId>displaytag</artifactId>
             <version>1.2</version>
         </dependency>
-        <dependency>
-            <groupId>javax.servlet.jsp</groupId>
-            <artifactId>jsp-api</artifactId>
-            <version>2.0</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>javax.servlet.jsp</groupId>-->
+<!--            <artifactId>jsp-api</artifactId>-->
+<!--            <version>2.0</version>-->
+<!--        </dependency>-->
         <dependency>
 	        <groupId>com.github.kenglxn.qrgen</groupId>
 	        <artifactId>javase</artifactId>
 	        <version>2.6.0</version>
 	    </dependency>
-<!--        <dependency>-->
-<!--            <groupId>com.aspose</groupId>-->
-<!--            <artifactId>aspose-pdf</artifactId>-->
-<!--            <version>22.12</version>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>com.aspose</groupId>
+            <artifactId>aspose-pdf</artifactId>
+            <version>22.12</version>
+        </dependency>
 <!--        <dependency>-->
 <!--            <groupId>e-iceblue</groupId>-->
 <!--            <artifactId>spire.pdf</artifactId>-->
@@ -226,45 +225,45 @@
 <!--                </exclusion>-->
 <!--            </exclusions>-->
 <!--        </dependency>-->
-        <dependency>
-            <groupId>com.groupdocs</groupId>
-            <artifactId>groupdocs-signature</artifactId>
-            <version>20.9</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>javax.transaction</groupId>
-                    <artifactId>jta</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>com.lowagie</groupId>
-            <artifactId>itext</artifactId>
-            <version>2.1.7</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.bouncycastle</groupId>
-                    <artifactId>bcprov-jdk14</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.bouncycastle</groupId>
-                    <artifactId>bcmail-jdk14</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>bouncycastle</groupId>
-                    <artifactId>bcmail-jdk14</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>bouncycastle</groupId>
-                    <artifactId>bcprov-jdk14</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-jdk15</artifactId>
-            <version>1.43</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.groupdocs</groupId>-->
+<!--            <artifactId>groupdocs-signature</artifactId>-->
+<!--            <version>20.9</version>-->
+<!--            <exclusions>-->
+<!--                <exclusion>-->
+<!--                    <groupId>javax.transaction</groupId>-->
+<!--                    <artifactId>jta</artifactId>-->
+<!--                </exclusion>-->
+<!--            </exclusions>-->
+<!--        </dependency>-->
+<!--        <dependency>-->
+<!--            <groupId>com.lowagie</groupId>-->
+<!--            <artifactId>itext</artifactId>-->
+<!--            <version>2.1.7</version>-->
+<!--            <exclusions>-->
+<!--                <exclusion>-->
+<!--                    <groupId>org.bouncycastle</groupId>-->
+<!--                    <artifactId>bcprov-jdk14</artifactId>-->
+<!--                </exclusion>-->
+<!--                <exclusion>-->
+<!--                    <groupId>org.bouncycastle</groupId>-->
+<!--                    <artifactId>bcmail-jdk14</artifactId>-->
+<!--                </exclusion>-->
+<!--                <exclusion>-->
+<!--                    <groupId>bouncycastle</groupId>-->
+<!--                    <artifactId>bcmail-jdk14</artifactId>-->
+<!--                </exclusion>-->
+<!--                <exclusion>-->
+<!--                    <groupId>bouncycastle</groupId>-->
+<!--                    <artifactId>bcprov-jdk14</artifactId>-->
+<!--                </exclusion>-->
+<!--            </exclusions>-->
+<!--        </dependency>-->
+<!--        <dependency>-->
+<!--            <groupId>org.bouncycastle</groupId>-->
+<!--            <artifactId>bcprov-jdk15</artifactId>-->
+<!--            <version>1.43</version>-->
+<!--        </dependency>-->
         <!-- End change plugin specific dependencies here -->
     </dependencies>
 

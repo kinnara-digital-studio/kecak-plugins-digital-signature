@@ -1,13 +1,11 @@
 package com.kinnara.kecakplugins.digitalsignature;
 
 
-import com.groupdocs.signature.Signature;
-import com.groupdocs.signature.domain.Padding;
-import com.groupdocs.signature.domain.SignResult;
-import com.groupdocs.signature.domain.enums.HorizontalAlignment;
-import com.groupdocs.signature.domain.enums.VerticalAlignment;
-import com.groupdocs.signature.options.sign.DigitalSignOptions;
 
+
+import com.aspose.pdf.*;
+import com.aspose.pdf.facades.PdfFileSignature;
+import com.mysql.cj.log.Log;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.lib.FileUpload;
 import org.joget.apps.form.model.*;
@@ -60,13 +58,47 @@ public class DigitalCertificate extends FileUpload {
         String filePath = FormUtil.getElementPropertyValue(this, formData);
         LogUtil.info(getClassName(), "filepath to tomcat : " + filePath);
         //get uploaded file from app_temp
-        LogUtil.info(getClassName(), "new plugins 13");
+        LogUtil.info(getClassName(), "new plugins 20");
         File fileObj = FileManager.getFileByPath(filePath);
+
+        if(fileObj.isFile()){
+            LogUtil.info(getClassName(), "file is true");
+        }else{
+            LogUtil.info(getClassName(), "file is false");
+        }
+
+        String pathObj = fileObj.getAbsolutePath();
+        LogUtil.info(getClassName(), "get name : " + fileObj.getName());
+        LogUtil.info(getClassName(), "string value of obj file : " + fileObj.toString());
+
         String path = FileManager.getBaseDirectory();
-        LogUtil.info(getClassName(), "signature : " + fileObj.getName());
-        LogUtil.info(getClassName(), "signature string value of : " + fileObj.toString());
+
         LogUtil.info(getClassName(), "base directory : " + path);
-        Signature signature = new Signature(fileObj.toString());
+        try{
+            Document doc = new Document(pathObj);
+            LogUtil.info(getClassName(), "doc : " + doc.getFileName());
+        }catch(Exception e){
+            LogUtil.info(getClassName(), "error : " + e.getMessage());
+            throw new RuntimeException(e);
+        }
+
+//        PdfFileSignature signature = new PdfFileSignature(doc);
+
+// Create any of the three signature types
+//        try {
+//            String pathCert = String.valueOf(ResourceUtils.getURL("/resources/certificate.pfx"));
+//            PKCS7 pkcs = new PKCS7(pathCert, "asdzxvqwe"); // Use PKCS7/PKCS7Detached objects
+//            DocMDPSignature docMdpSignature = new DocMDPSignature(pkcs, DocMDPAccessPermissions.FillingInForms);
+//            Rectangle rect = new Rectangle(100, 600, 400, 100);
+//// Set signature appearance
+//            signature.setSignatureAppearance("aspose-logo.png");
+//            signature.certify(1, "Signature Reason", "Contact", "Location", true, rect.toRect(), docMdpSignature);
+//// Save digitally signed PDF file
+//            signature.save(filePath);
+//        } catch (FileNotFoundException e) {
+//            throw new RuntimeException(e);
+//        }
+
 
 //        try {
 //            File fileCert = ResourceUtils.getFile("/resources/certificate.pfx");
@@ -96,13 +128,13 @@ public class DigitalCertificate extends FileUpload {
 //        }
 
 //        if(getStoreBinder() == null) {
-            return super.formatData(formData);
+//            return super.formatData(formData);
 //        }
 
 //        FormStoreBinder formStoreBinder = FormUtil.findStoreBinder(this);
 //        FormRowSet rowSet = formStoreBinder.store(this, new FormRowSet(), formData);
 //        return rowSet;
-//        return new FormRowSet();
+        return new FormRowSet();
     }
 
     @Override
