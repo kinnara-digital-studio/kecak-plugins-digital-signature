@@ -18,9 +18,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.springframework.util.ResourceUtils;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 import java.util.Collection;
 import java.util.stream.Stream;
@@ -58,29 +56,62 @@ public class DigitalCertificate extends FileUpload {
         String filePath = FormUtil.getElementPropertyValue(this, formData);
         LogUtil.info(getClassName(), "filepath to tomcat : " + filePath);
         //get uploaded file from app_temp
-        LogUtil.info(getClassName(), "new plugins 20");
+        LogUtil.info(getClassName(), "new plugins 27");
         File fileObj = FileManager.getFileByPath(filePath);
 
-        if(fileObj.isFile()){
-            LogUtil.info(getClassName(), "file is true");
-        }else{
-            LogUtil.info(getClassName(), "file is false");
+        if(fileObj.exists()){
+            LogUtil.info(getClassName(), "file is exist");
+        }
+        if(fileObj.canRead()){
+            LogUtil.info(getClassName(), "file is readable");
+        }
+        if(fileObj.canWrite()){
+            LogUtil.info(getClassName(), "file is writable");
+        }
+        fileObj.setExecutable(true);
+        if(fileObj.canExecute()){
+            LogUtil.info(getClassName(), "file is executable");
         }
 
-        String pathObj = fileObj.getAbsolutePath();
-        LogUtil.info(getClassName(), "get name : " + fileObj.getName());
-        LogUtil.info(getClassName(), "string value of obj file : " + fileObj.toString());
 
-        String path = FileManager.getBaseDirectory();
-
-        LogUtil.info(getClassName(), "base directory : " + path);
-        try{
-            Document doc = new Document(pathObj);
-            LogUtil.info(getClassName(), "doc : " + doc.getFileName());
-        }catch(Exception e){
-            LogUtil.info(getClassName(), "error : " + e.getMessage());
+        InputStream inputStream = null;
+        try {
+            inputStream = new FileInputStream(fileObj);
+            LogUtil.info(getClassName(), "test input stream : " + inputStream.toString());
+            if(inputStream.available() > 0){
+                LogUtil.info(getClassName(), "input stream is available");
+            }
+            Integer testRead = inputStream.read();
+            LogUtil.info(getClassName(), "testRead : " + testRead);
+            Document pdfDocument = new Document(inputStream);
+            LogUtil.info(getClassName(), "doc : " + pdfDocument.getInfo());
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
+
+//        if(fileObj.isFile()){
+//            LogUtil.info(getClassName(), "file is true");
+//        }else{
+//            LogUtil.info(getClassName(), "file is false");
+//        }
+//
+//        String pathObj = fileObj.getAbsolutePath();
+//        LogUtil.info(getClassName(), "get name : " + fileObj.getName());
+//        LogUtil.info(getClassName(), "string value of obj file : " + fileObj.toString());
+//
+//        String path = FileManager.getBaseDirectory();
+//
+//        LogUtil.info(getClassName(), "base directory : " + pathObj);
+//        try{
+//            Document doc = new Document(pathObj);
+//            LogUtil.info(getClassName(), "doc : " + doc.getFileName());
+//        }catch(Exception e){
+//            LogUtil.info(getClassName(), "error : " + e.getMessage());
+//            throw new RuntimeException(e);
+//        }
 
 //        PdfFileSignature signature = new PdfFileSignature(doc);
 
