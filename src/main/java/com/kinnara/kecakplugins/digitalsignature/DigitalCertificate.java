@@ -1,9 +1,5 @@
 package com.kinnara.kecakplugins.digitalsignature;
 
-
-
-
-
 import com.lowagie.text.DocumentException;
 import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.*;
@@ -13,7 +9,6 @@ import org.apache.commons.io.IOUtils;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.lib.FileUpload;
 import org.joget.apps.form.model.*;
-import org.joget.apps.form.service.FileUtil;
 import org.joget.apps.form.service.FormUtil;
 import org.joget.commons.util.FileManager;
 import org.joget.commons.util.LogUtil;
@@ -23,8 +18,18 @@ import org.json.JSONException;
 import org.springframework.util.ResourceUtils;
 
 import java.io.*;
-import java.security.*;
-import java.security.cert.CertificateEncodingException;
+
+import java.security.InvalidKeyException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.PrivateKey;
+import java.security.Signature;
+import java.security.SignatureException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.*;
@@ -59,36 +64,58 @@ public class DigitalCertificate extends FileUpload{
         if(!filePaths.isEmpty())
             dataModel.put("filePaths", filePaths);
 
-        String html = FormUtil.generateElementHtml(this, formData, template, dataModel);
-        return html;
+        return FormUtil.generateElementHtml(this, formData, template, dataModel);
     }
 
     public FormRowSet formatData(FormData formData) {
 
         String filePath = FormUtil.getElementPropertyValue(this, formData);
         LogUtil.info(getClassName(), "filepath to tomcat : " + filePath);
+        LogUtil.info(getClassName(), "new plugins 49");
+
         //get uploaded file from app_temp
-        LogUtil.info(getClassName(), "new plugins 36");
         File fileObj = FileManager.getFileByPath(filePath);
 
         try {
 
             //get key
-            File certFile = ResourceUtils.getFile("wflow/app_certificate/newCert.pfx");
-//            File test = FileManager.getFileByPath("resources/certificate.pfx");
+            File certFile = ResourceUtils.getFile("wflow/app_certificate/newIdentity2.pkcs12");
             String pathTest = certFile.getAbsolutePath();
             LogUtil.info(getClassName(), "filepath : " + pathTest);
+
             InputStream inputKey = new FileInputStream(certFile);
-            LogUtil.info(getClassName(), "input key : " + inputKey.toString());
+//            String content = IOUtils.toString(inputKey);
+//            LogUtil.info(getClassName(), "content of input key : " + content);
+            if(inputKey.available() > 0){
+                LogUtil.info(getClassName(), "key file is available.");
+            }
+            LogUtil.info(getClassName(), "input key : " + inputKey);
+//            byte[] byteKey = IOUtils.toByteArray(inputKey);
+//            DerInputStream derInputKey = new DerInputStream(byteKey);
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
-            keyStore.load(inputKey, "asdzxvqwe".toCharArray());
+            keyStore.load(inputKey, "password123".toCharArray());
+//            keyStore.load(derInputKey, "password123".toCharArray());
 
-            X509Certificate certificate = (X509Certificate) keyStore.getCertificate("person1");
+            if(keyStore.containsAlias("finakey2")){
+                LogUtil.info(getClassName(), "alias = finakey2");
+            }
+            if(keyStore.containsAlias("finakey")){
+                LogUtil.info(getClassName(), "alias = finakey");
+            }
+            if(keyStore.isKeyEntry("finakey2")){
+                LogUtil.info(getClassName(), "is key entry.");
+            }
 
-            privateKey = (PrivateKey) keyStore.getKey("person1", "asdzxvqwe".toCharArray());
-            certificateChain = certificate.getEncoded();
-            certificates = new Certificate[]{(Certificate) certificate};
-            if(keyStore.isCertificateEntry("person1")){
+
+            this.privateKey = (PrivateKey) keyStore.getKey("finakey2", "password123".toCharArray());
+            LogUtil.info(getClassName(), "key : " + keyStore.getKey("finakey2", "password123".toCharArray()));
+            X509Certificate certificate = (X509Certificate) keyStore.getCertificate("finakey2");
+            String alias = keyStore.getCertificateAlias(certificate);
+            LogUtil.info(getClassName(), "alias : " + alias);
+
+            this.certificateChain = certificate.getEncoded();
+            this.certificates = new Certificate[]{certificate};
+            if(keyStore.isCertificateEntry(null)){
                 LogUtil.info(getClassName(), "keystore : " + keyStore);
                 LogUtil.info(getClassName(), "type : " + keyStore.getType());
             }
@@ -102,20 +129,12 @@ public class DigitalCertificate extends FileUpload{
             File result = new File(filePath);
             FileUtils.writeByteArrayToFile(result, output.toByteArray());
 
-        } catch (FileNotFoundException | KeyStoreException | NoSuchAlgorithmException | UnrecoverableKeyException e) {
-            throw new RuntimeException(e);
-        } catch (CertificateEncodingException e) {
-            throw new RuntimeException(e);
-        } catch (CertificateException e) {
+        } catch (FileNotFoundException | KeyStoreException | NoSuchAlgorithmException | UnrecoverableKeyException |
+                 NoSuchProviderException | InvalidKeyException | SignatureException | CertificateException e) {
+            LogUtil.error(getClassName(), e, "error : " + e.getMessage());
             throw new RuntimeException(e);
         } catch (IOException e) {
             LogUtil.error(getClassName(), e, e.getMessage());
-            throw new RuntimeException(e);
-        } catch (SignatureException e) {
-            throw new RuntimeException(e);
-        } catch (NoSuchProviderException e) {
-            throw new RuntimeException(e);
-        } catch (InvalidKeyException e) {
             throw new RuntimeException(e);
         }
 
@@ -143,11 +162,11 @@ public class DigitalCertificate extends FileUpload{
         pdfSignature.setLocation("Location of signature");
         pdfSignature.setContact("Person Name");
         pdfSignature.setDate(new PdfDate(signDate));
-        pdfSignature.setCert(certificateChain);
+        pdfSignature.setCert(this.certificateChain);
 
         PdfSignatureAppearance appearance = createAppearance(signer, page, pdfSignature);
 
-        PdfPKCS7 sgn = new PdfPKCS7((PrivateKey) null, (java.security.cert.Certificate[]) certificates, null, "SHA-256", null, false);
+        PdfPKCS7 sgn = new PdfPKCS7(null, this.certificates, null, "SHA-256", null, false);
         InputStream data = appearance.getRangeStream();
 
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -182,7 +201,7 @@ public class DigitalCertificate extends FileUpload{
         appearance.setVisibleSignature(new Rectangle(lowerLeftX, lowerLeftY, width, height), page, null);
 
         appearance.setCryptoDictionary(pdfSignature);
-        appearance.setCrypto((PrivateKey) null, (java.security.cert.Certificate[]) certificates, null, PdfName.FILTER);
+        appearance.setCrypto(null, certificates, null, PdfName.FILTER);
 
         HashMap<Object, Object> exclusions = new HashMap<>();
         exclusions.put(PdfName.CONTENTS, ESTIMATED_SIGNATURE_SIZE * 2 + 2);
@@ -208,8 +227,7 @@ public class DigitalCertificate extends FileUpload{
     public String getVersion() {
         PluginManager pluginManager = (PluginManager) AppUtil.getApplicationContext().getBean("pluginManager");
         ResourceBundle resourceBundle = pluginManager.getPluginMessageBundle(getClassName(), "/message/BuildNumber");
-        String buildNumber = resourceBundle.getString("buildNumber");
-        return buildNumber;
+        return resourceBundle.getString("buildNumber");
     }
 
     @Override
