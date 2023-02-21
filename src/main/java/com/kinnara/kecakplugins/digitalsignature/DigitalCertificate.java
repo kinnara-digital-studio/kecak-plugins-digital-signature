@@ -4,6 +4,7 @@ import com.lowagie.text.DocumentException;
 import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.*;
 import com.lowagie.text.pdf.PdfPKCS7;
+import com.mysql.cj.log.Log;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.joget.apps.app.service.AppUtil;
@@ -38,6 +39,7 @@ import java.util.stream.Stream;
 
 
 public class DigitalCertificate extends FileUpload{
+
     private static final int ESTIMATED_SIGNATURE_SIZE = 8192;
     private byte[] certificateChain;
     private Certificate[] certificates;
@@ -71,7 +73,7 @@ public class DigitalCertificate extends FileUpload{
 
         String filePath = FormUtil.getElementPropertyValue(this, formData);
         LogUtil.info(getClassName(), "filepath to tomcat : " + filePath);
-        LogUtil.info(getClassName(), "new plugins 49");
+        LogUtil.info(getClassName(), "new plugins 56");
 
         //get uploaded file from app_temp
         File fileObj = FileManager.getFileByPath(filePath);
@@ -81,7 +83,7 @@ public class DigitalCertificate extends FileUpload{
             //get key
             File certFile = ResourceUtils.getFile("wflow/app_certificate/newIdentity2.pkcs12");
             String pathTest = certFile.getAbsolutePath();
-            LogUtil.info(getClassName(), "filepath : " + pathTest);
+            LogUtil.info(getClassName(), "filepath key : " + pathTest);
 
             InputStream inputKey = new FileInputStream(certFile);
 //            String content = IOUtils.toString(inputKey);
@@ -93,9 +95,15 @@ public class DigitalCertificate extends FileUpload{
 //            byte[] byteKey = IOUtils.toByteArray(inputKey);
 //            DerInputStream derInputKey = new DerInputStream(byteKey);
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
-            keyStore.load(inputKey, "password123".toCharArray());
-//            keyStore.load(derInputKey, "password123".toCharArray());
 
+            keyStore.load(inputKey, "password123".toCharArray());
+            String alias =  keyStore.aliases().nextElement();
+
+
+//            keyStore.load(derInputKey, "password123".toCharArray());
+            if(keyStore.isCertificateEntry("finakey2")){
+                LogUtil.info(getClassName(), "certificate is entry");
+            }
             if(keyStore.containsAlias("finakey2")){
                 LogUtil.info(getClassName(), "alias = finakey2");
             }
@@ -106,15 +114,13 @@ public class DigitalCertificate extends FileUpload{
                 LogUtil.info(getClassName(), "is key entry.");
             }
 
+            this.privateKey = (PrivateKey) keyStore.getKey(alias, "password123".toCharArray());
+            LogUtil.info(getClassName(), "key : " + keyStore.getKey(alias, "password123".toCharArray()));
+//            X509Certificate certificate = (X509Certificate) keyStore.getCertificate(alias);
 
-            this.privateKey = (PrivateKey) keyStore.getKey("finakey2", "password123".toCharArray());
-            LogUtil.info(getClassName(), "key : " + keyStore.getKey("finakey2", "password123".toCharArray()));
-            X509Certificate certificate = (X509Certificate) keyStore.getCertificate("finakey2");
-            String alias = keyStore.getCertificateAlias(certificate);
-            LogUtil.info(getClassName(), "alias : " + alias);
-
-            this.certificateChain = certificate.getEncoded();
-            this.certificates = new Certificate[]{certificate};
+//            this.certificateChain = this.certificates.;
+//            this.certificates = new Certificate[]{certificate};
+            this.certificates = keyStore.getCertificateChain(alias);
             if(keyStore.isCertificateEntry(null)){
                 LogUtil.info(getClassName(), "keystore : " + keyStore);
                 LogUtil.info(getClassName(), "type : " + keyStore.getType());
@@ -147,6 +153,8 @@ public class DigitalCertificate extends FileUpload{
 //        return rowSet;
         return new FormRowSet();
     }
+
+
 
     public void sign(byte[] document, ByteArrayOutputStream output) throws IOException, DocumentException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, SignatureException {
         PdfReader pdfReader = new PdfReader(document);
@@ -188,6 +196,29 @@ public class DigitalCertificate extends FileUpload{
         dictionary.put(PdfName.CONTENTS, new PdfString(paddedSig).setHexWriting(true));
         appearance.close(dictionary);
     }
+
+//    public void sign(String src, String dest, Certificate[] chain, PrivateKey pk, String digestAlgorithm,
+//                     String provider, PdfSigner.CryptoStandard signatureType, String reason, String location)
+//            throws GeneralSecurityException, IOException {
+//        PdfReader reader = new PdfReader(src);
+//        PdfSigner signer = new PdfSigner(reader, new FileOutputStream(dest), new StampingProperties());
+//        // Create the signature appearance
+//        Rectangle rect = new Rectangle(36, 648, 200, 100);
+//        PdfSignatureAppearance appearance = signer.getSignatureAppearance();
+//        appearance
+//                .setReason(reason)
+//                .setLocation(location)
+//        // Specify if the appearance before field is signed will be used
+//        // as a background for the signed field. The "false" value is the default value.
+//                .setReuseAppearance(false)
+//                .setPageRect(rect)
+//                .setPageNumber(1);
+//        signer.setFieldName("sig");
+//        IExternalSignature pks = new PrivateKeySignature(pk, digestAlgorithm, provider);
+//        IExternalDigest digest = new BouncyCastleDigest();
+//        // Sign the document using the detached mode, CMS or CAdES equivalent.
+//        signer.signDetached(digest, pks, chain, null, null, null, 0, signatureType);
+//    }
 
     private PdfSignatureAppearance createAppearance(PdfStamper signer, int page, PdfSignature pdfSignature) throws IOException, DocumentException {
         PdfSignatureAppearance appearance = signer.getSignatureAppearance();
