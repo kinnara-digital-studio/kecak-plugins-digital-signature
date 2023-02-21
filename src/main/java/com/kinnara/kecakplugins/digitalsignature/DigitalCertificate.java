@@ -1,12 +1,12 @@
 package com.kinnara.kecakplugins.digitalsignature;
 
-import com.lowagie.text.DocumentException;
-import com.lowagie.text.Rectangle;
-import com.lowagie.text.pdf.*;
-import com.lowagie.text.pdf.PdfPKCS7;
-import com.mysql.cj.log.Log;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
+import com.itextpdf.kernel.geom.Rectangle;
+import com.itextpdf.kernel.pdf.PdfReader;
+import com.itextpdf.kernel.pdf.StampingProperties;
+import com.itextpdf.signatures.*;
+
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.lib.FileUpload;
 import org.joget.apps.form.model.*;
@@ -18,21 +18,13 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.springframework.util.ResourceUtils;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 
-import java.security.InvalidKeyException;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.PrivateKey;
-import java.security.Signature;
-import java.security.SignatureException;
-import java.security.UnrecoverableKeyException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.*;
 import java.security.cert.Certificate;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.Collection;
 import java.util.stream.Stream;
@@ -40,10 +32,12 @@ import java.util.stream.Stream;
 
 public class DigitalCertificate extends FileUpload{
 
-    private static final int ESTIMATED_SIGNATURE_SIZE = 8192;
-    private byte[] certificateChain;
-    private Certificate[] certificates;
-    private PrivateKey privateKey;
+//    private static final int ESTIMATED_SIGNATURE_SIZE = 8192;
+//    private byte[] certificateChain;
+//    private Certificate[] certificates;
+//    private PrivateKey privateKey;
+
+
     @Override
     public String renderTemplate(FormData formData, Map dataModel) {
         if(getLoadBinder() == null) {
@@ -73,76 +67,33 @@ public class DigitalCertificate extends FileUpload{
 
         String filePath = FormUtil.getElementPropertyValue(this, formData);
         LogUtil.info(getClassName(), "filepath to tomcat : " + filePath);
-        LogUtil.info(getClassName(), "new plugins 56");
+        LogUtil.info(getClassName(), "new plugins 61");
 
         //get uploaded file from app_temp
         File fileObj = FileManager.getFileByPath(filePath);
-
+        String pathDocs = fileObj.getAbsolutePath();
+        char[] pass = "password123".toCharArray();
         try {
-
-            //get key
             File certFile = ResourceUtils.getFile("wflow/app_certificate/newIdentity2.pkcs12");
-            String pathTest = certFile.getAbsolutePath();
-            LogUtil.info(getClassName(), "filepath key : " + pathTest);
+            String path = certFile.getAbsolutePath();
 
-            InputStream inputKey = new FileInputStream(certFile);
-//            String content = IOUtils.toString(inputKey);
-//            LogUtil.info(getClassName(), "content of input key : " + content);
-            if(inputKey.available() > 0){
-                LogUtil.info(getClassName(), "key file is available.");
-            }
-            LogUtil.info(getClassName(), "input key : " + inputKey);
-//            byte[] byteKey = IOUtils.toByteArray(inputKey);
-//            DerInputStream derInputKey = new DerInputStream(byteKey);
-            KeyStore keyStore = KeyStore.getInstance("PKCS12");
+            KeyStore ks = KeyStore.getInstance("pkcs12");
+            ks.load(Files.newInputStream(Paths.get(path)), pass);
+            String alias = ks.aliases().nextElement();
 
-            keyStore.load(inputKey, "password123".toCharArray());
-            String alias =  keyStore.aliases().nextElement();
+            PrivateKey pk = (PrivateKey) ks.getKey(alias, pass);
+            Certificate[] chain = ks.getCertificateChain(alias);
+            BouncyCastleProvider provider = new BouncyCastleProvider();
+            Security.addProvider(provider);
 
+            LogUtil.info(getClassName(), "key : " + pk.toString());
 
-//            keyStore.load(derInputKey, "password123".toCharArray());
-            if(keyStore.isCertificateEntry("finakey2")){
-                LogUtil.info(getClassName(), "certificate is entry");
-            }
-            if(keyStore.containsAlias("finakey2")){
-                LogUtil.info(getClassName(), "alias = finakey2");
-            }
-            if(keyStore.containsAlias("finakey")){
-                LogUtil.info(getClassName(), "alias = finakey");
-            }
-            if(keyStore.isKeyEntry("finakey2")){
-                LogUtil.info(getClassName(), "is key entry.");
-            }
-
-            this.privateKey = (PrivateKey) keyStore.getKey(alias, "password123".toCharArray());
-            LogUtil.info(getClassName(), "key : " + keyStore.getKey(alias, "password123".toCharArray()));
-//            X509Certificate certificate = (X509Certificate) keyStore.getCertificate(alias);
-
-//            this.certificateChain = this.certificates.;
-//            this.certificates = new Certificate[]{certificate};
-            this.certificates = keyStore.getCertificateChain(alias);
-            if(keyStore.isCertificateEntry(null)){
-                LogUtil.info(getClassName(), "keystore : " + keyStore);
-                LogUtil.info(getClassName(), "type : " + keyStore.getType());
-            }
-
-            //get pdf file
-            InputStream inputStream = new FileInputStream(fileObj);
-            ByteArrayOutputStream output = new ByteArrayOutputStream();
-
-            sign(IOUtils.toByteArray(inputStream), output);
-
-            File result = new File(filePath);
-            FileUtils.writeByteArrayToFile(result, output.toByteArray());
-
-        } catch (FileNotFoundException | KeyStoreException | NoSuchAlgorithmException | UnrecoverableKeyException |
-                 NoSuchProviderException | InvalidKeyException | SignatureException | CertificateException e) {
-            LogUtil.error(getClassName(), e, "error : " + e.getMessage());
-            throw new RuntimeException(e);
-        } catch (IOException e) {
-            LogUtil.error(getClassName(), e, e.getMessage());
+            sign(pathDocs, pathDocs , chain, pk, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
+                    "Test", "Ghent", null, null, null, 0);
+        } catch (IOException | GeneralSecurityException e) {
             throw new RuntimeException(e);
         }
+
 
 //        if(getStoreBinder() == null) {
 //            return super.formatData(formData);
@@ -154,99 +105,33 @@ public class DigitalCertificate extends FileUpload{
         return new FormRowSet();
     }
 
+    public void sign(String src, String dest, Certificate[] chain, PrivateKey pk,
+                     String digestAlgorithm, String provider, PdfSigner.CryptoStandard subfilter,
+                     String reason, String location, Collection<ICrlClient> crlList,
+                     IOcspClient ocspClient, ITSAClient tsaClient, int estimatedSize)
+            throws GeneralSecurityException, IOException {
+        PdfReader reader = new PdfReader(src);
+        PdfSigner signer = new PdfSigner(reader, Files.newOutputStream(Paths.get(dest)), new StampingProperties());
 
-
-    public void sign(byte[] document, ByteArrayOutputStream output) throws IOException, DocumentException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, SignatureException {
-        PdfReader pdfReader = new PdfReader(document);
-
-        PdfStamper signer = PdfStamper.createSignature(pdfReader, output, '\0');
-
-        Calendar signDate = Calendar.getInstance();
-
-        int page = 1;
-
-        PdfSignature pdfSignature = new PdfSignature(PdfName.ADOBE_PPKLITE, PdfName.ADBE_PKCS7_DETACHED);
-        pdfSignature.setReason("Reason to sign");
-        pdfSignature.setLocation("Location of signature");
-        pdfSignature.setContact("Person Name");
-        pdfSignature.setDate(new PdfDate(signDate));
-        pdfSignature.setCert(this.certificateChain);
-
-        PdfSignatureAppearance appearance = createAppearance(signer, page, pdfSignature);
-
-        PdfPKCS7 sgn = new PdfPKCS7(null, this.certificates, null, "SHA-256", null, false);
-        InputStream data = appearance.getRangeStream();
-
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        digest.update(IOUtils.toByteArray(data));
-        byte[] appeareanceHash = digest.digest();
-
-        byte[] hashToSign = sgn.getAuthenticatedAttributeBytes(appeareanceHash, appearance.getSignDate(), null);
-
-        byte[] signedHash = addDigitalSignatureToHash(hashToSign);
-
-        sgn.setExternalDigest(signedHash, null, "RSA");
-        byte[] encodedPKCS7 = sgn.getEncodedPKCS7(appeareanceHash, appearance.getSignDate());
-
-        byte[] paddedSig = new byte[ESTIMATED_SIGNATURE_SIZE];
-
-        System.arraycopy(encodedPKCS7, 0, paddedSig, 0, encodedPKCS7.length);
-
-        PdfDictionary dictionary = new PdfDictionary();
-        dictionary.put(PdfName.CONTENTS, new PdfString(paddedSig).setHexWriting(true));
-        appearance.close(dictionary);
-    }
-
-//    public void sign(String src, String dest, Certificate[] chain, PrivateKey pk, String digestAlgorithm,
-//                     String provider, PdfSigner.CryptoStandard signatureType, String reason, String location)
-//            throws GeneralSecurityException, IOException {
-//        PdfReader reader = new PdfReader(src);
-//        PdfSigner signer = new PdfSigner(reader, new FileOutputStream(dest), new StampingProperties());
-//        // Create the signature appearance
-//        Rectangle rect = new Rectangle(36, 648, 200, 100);
-//        PdfSignatureAppearance appearance = signer.getSignatureAppearance();
-//        appearance
-//                .setReason(reason)
-//                .setLocation(location)
-//        // Specify if the appearance before field is signed will be used
-//        // as a background for the signed field. The "false" value is the default value.
-//                .setReuseAppearance(false)
-//                .setPageRect(rect)
-//                .setPageNumber(1);
-//        signer.setFieldName("sig");
-//        IExternalSignature pks = new PrivateKeySignature(pk, digestAlgorithm, provider);
-//        IExternalDigest digest = new BouncyCastleDigest();
-//        // Sign the document using the detached mode, CMS or CAdES equivalent.
-//        signer.signDetached(digest, pks, chain, null, null, null, 0, signatureType);
-//    }
-
-    private PdfSignatureAppearance createAppearance(PdfStamper signer, int page, PdfSignature pdfSignature) throws IOException, DocumentException {
+        // Create the signature appearance
+        Rectangle rect = new Rectangle(36, 648, 200, 100);
         PdfSignatureAppearance appearance = signer.getSignatureAppearance();
-        appearance.setRender(PdfSignatureAppearance.SignatureRenderDescription);
-        appearance.setAcro6Layers(true);
+        appearance
+                .setReason(reason)
+                .setLocation(location)
 
-        int lowerLeftX = 570;
-        int lowerLeftY = 70;
-        int width = 370;
-        int height = 150;
-        appearance.setVisibleSignature(new Rectangle(lowerLeftX, lowerLeftY, width, height), page, null);
+                // Specify if the appearance before field is signed will be used
+                // as a background for the signed field. The "false" value is the default value.
+                .setReuseAppearance(false)
+                .setPageRect(rect)
+                .setPageNumber(1);
+        signer.setFieldName("sig");
 
-        appearance.setCryptoDictionary(pdfSignature);
-        appearance.setCrypto(null, certificates, null, PdfName.FILTER);
+        IExternalSignature pks = new PrivateKeySignature(pk, digestAlgorithm, provider);
+        IExternalDigest digest = new BouncyCastleDigest();
 
-        HashMap<Object, Object> exclusions = new HashMap<>();
-        exclusions.put(PdfName.CONTENTS, ESTIMATED_SIGNATURE_SIZE * 2 + 2);
-        appearance.preClose(exclusions);
-
-        return appearance;
-    }
-
-    public byte[] addDigitalSignatureToHash(byte[] hashToSign) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
-        java.security.Signature signature = Signature.getInstance("SHA256withRSA");
-        signature.initSign(privateKey);
-        signature.update(hashToSign);
-
-        return signature.sign();
+        // Sign the document using the detached mode, CMS or CAdES equivalent.
+        signer.signDetached(digest, pks, chain, crlList, ocspClient, tsaClient, estimatedSize, subfilter);
     }
 
     @Override
