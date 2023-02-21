@@ -19,6 +19,7 @@ import org.json.JSONException;
 import org.springframework.util.ResourceUtils;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
 import java.nio.file.Files;
@@ -67,7 +68,7 @@ public class DigitalCertificate extends FileUpload{
 
         String filePath = FormUtil.getElementPropertyValue(this, formData);
         LogUtil.info(getClassName(), "filepath to tomcat : " + filePath);
-        LogUtil.info(getClassName(), "new plugins 61");
+        LogUtil.info(getClassName(), "new plugins 63");
 
         //get uploaded file from app_temp
         File fileObj = FileManager.getFileByPath(filePath);
@@ -111,7 +112,7 @@ public class DigitalCertificate extends FileUpload{
                      IOcspClient ocspClient, ITSAClient tsaClient, int estimatedSize)
             throws GeneralSecurityException, IOException {
         PdfReader reader = new PdfReader(src);
-        PdfSigner signer = new PdfSigner(reader, Files.newOutputStream(Paths.get(dest)), new StampingProperties());
+        PdfSigner signer = new PdfSigner(reader, new FileOutputStream(dest), new StampingProperties());
 
         // Create the signature appearance
         Rectangle rect = new Rectangle(36, 648, 200, 100);
