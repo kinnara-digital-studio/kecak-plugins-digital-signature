@@ -13,13 +13,14 @@ import org.joget.apps.form.model.*;
 import org.joget.apps.form.service.FormUtil;
 import org.joget.commons.util.FileManager;
 import org.joget.commons.util.LogUtil;
+import org.joget.directory.model.User;
 import org.joget.plugin.base.PluginManager;
+import org.joget.workflow.model.service.WorkflowUserManager;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.springframework.util.ResourceUtils;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 
 import java.nio.file.Files;
@@ -32,13 +33,6 @@ import java.util.stream.Stream;
 
 
 public class DigitalCertificate extends FileUpload{
-
-//    private static final int ESTIMATED_SIGNATURE_SIZE = 8192;
-//    private byte[] certificateChain;
-//    private Certificate[] certificates;
-//    private PrivateKey privateKey;
-
-
     @Override
     public String renderTemplate(FormData formData, Map dataModel) {
         if(getLoadBinder() == null) {
@@ -68,14 +62,30 @@ public class DigitalCertificate extends FileUpload{
 
         String filePath = FormUtil.getElementPropertyValue(this, formData);
         LogUtil.info(getClassName(), "filepath to tomcat : " + filePath);
-        LogUtil.info(getClassName(), "new plugins 63");
+        LogUtil.info(getClassName(), "new plugins 72");
 
         //get uploaded file from app_temp
         File fileObj = FileManager.getFileByPath(filePath);
         String pathDocs = fileObj.getAbsolutePath();
-        char[] pass = "password123".toCharArray();
+
+        //get password from tomcat
+        WorkflowUserManager wum = (WorkflowUserManager)AppUtil.getApplicationContext().getBean("workflowUserManager");
+        User user = wum.getCurrentUser();
+        String username = user.getUsername();
+        LogUtil.info(getClassName(), "username : " + username);
+
+
         try {
+            //get password
+            File passFile = ResourceUtils.getFile("wflow/app_certificate/PasswordCert.properties");
+            String passPath = passFile.getAbsolutePath();
+            Properties properties = new Properties();
+            properties.load(Files.newInputStream(Paths.get(passPath)));
+            LogUtil.info(getClassName(), "password : " + properties.getProperty("password." + username));
+            char[] pass = properties.getProperty("password." + username).toCharArray();
+
             File certFile = ResourceUtils.getFile("wflow/app_certificate/newIdentity2.pkcs12");
+//            File certFile = ResourceUtils.getFile("wflow/app_certificate/"+username+".pkcs12");
             String path = certFile.getAbsolutePath();
 
             KeyStore ks = KeyStore.getInstance("pkcs12");
@@ -109,10 +119,9 @@ public class DigitalCertificate extends FileUpload{
     public void sign(String src, String dest, Certificate[] chain, PrivateKey pk,
                      String digestAlgorithm, String provider, PdfSigner.CryptoStandard subfilter,
                      String reason, String location, Collection<ICrlClient> crlList,
-                     IOcspClient ocspClient, ITSAClient tsaClient, int estimatedSize)
-            throws GeneralSecurityException, IOException {
+                     IOcspClient ocspClient, ITSAClient tsaClient, int estimatedSize) throws IOException, GeneralSecurityException {
         PdfReader reader = new PdfReader(src);
-        PdfSigner signer = new PdfSigner(reader, new FileOutputStream(dest), new StampingProperties());
+        PdfSigner signer = new PdfSigner(reader, Files.newOutputStream(Paths.get(dest)), new StampingProperties());
 
         // Create the signature appearance
         Rectangle rect = new Rectangle(36, 648, 200, 100);
