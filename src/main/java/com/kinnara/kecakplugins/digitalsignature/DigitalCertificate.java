@@ -4,15 +4,24 @@ import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.kernel.pdf.PdfReader;
 import com.itextpdf.kernel.pdf.StampingProperties;
 import com.itextpdf.signatures.*;
-
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
+import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.cert.X509v3CertificateBuilder;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-
+import org.bouncycastle.operator.ContentSigner;
+import org.bouncycastle.operator.OperatorCreationException;
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.lib.FileUpload;
-import org.joget.apps.form.model.*;
+import org.joget.apps.form.model.FormData;
+import org.joget.apps.form.model.FormRowSet;
 import org.joget.apps.form.service.FormUtil;
 import org.joget.commons.util.FileManager;
 import org.joget.commons.util.LogUtil;
+import org.joget.commons.util.SecurityUtil;
+import org.joget.commons.util.SetupManager;
 import org.joget.directory.model.User;
 import org.joget.plugin.base.PluginManager;
 import org.joget.workflow.model.service.WorkflowUserManager;
@@ -20,15 +29,17 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.springframework.util.ResourceUtils;
 
-import java.io.File;
-import java.io.IOException;
-
+import java.io.*;
+import java.math.BigInteger;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.*;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.util.*;
-import java.util.Collection;
 import java.util.stream.Stream;
 
 
@@ -60,33 +71,31 @@ public class DigitalCertificate extends FileUpload{
 
     public FormRowSet formatData(FormData formData) {
 
-        String filePath = FormUtil.getElementPropertyValue(this, formData);
-        LogUtil.info(getClassName(), "filepath to tomcat : " + filePath);
-        LogUtil.info(getClassName(), "new plugins 72");
+        LogUtil.info(getClassName(), "new plugins 96");
 
         //get uploaded file from app_temp
+        String filePath = FormUtil.getElementPropertyValue(this, formData);
         File fileObj = FileManager.getFileByPath(filePath);
-        String pathDocs = fileObj.getAbsolutePath();
+        String absolutePath = fileObj.getAbsolutePath();
 
         //get password from tomcat
         WorkflowUserManager wum = (WorkflowUserManager)AppUtil.getApplicationContext().getBean("workflowUserManager");
         User user = wum.getCurrentUser();
         String username = user.getUsername();
-        LogUtil.info(getClassName(), "username : " + username);
-
+        String name = user.getFirstName() + " " + user.getLastName() + " " + user.getEmail();
 
         try {
+            URL url = ResourceUtils.getURL("wflow/app_certificate/"+username+".pkcs12");
+            File certFile = new File(url.getPath());
             //get password
-            File passFile = ResourceUtils.getFile("wflow/app_certificate/PasswordCert.properties");
-            String passPath = passFile.getAbsolutePath();
-            Properties properties = new Properties();
-            properties.load(Files.newInputStream(Paths.get(passPath)));
-            LogUtil.info(getClassName(), "password : " + properties.getProperty("password." + username));
-            char[] pass = properties.getProperty("password." + username).toCharArray();
-
-            File certFile = ResourceUtils.getFile("wflow/app_certificate/newIdentity2.pkcs12");
-//            File certFile = ResourceUtils.getFile("wflow/app_certificate/"+username+".pkcs12");
+            char[] pass = getPassword();
+            if(!certFile.exists()){
+                generateKey(username, pass);
+            }
+            certFile = ResourceUtils.getFile(url);
             String path = certFile.getAbsolutePath();
+
+
 
             KeyStore ks = KeyStore.getInstance("pkcs12");
             ks.load(Files.newInputStream(Paths.get(path)), pass);
@@ -94,14 +103,14 @@ public class DigitalCertificate extends FileUpload{
 
             PrivateKey pk = (PrivateKey) ks.getKey(alias, pass);
             Certificate[] chain = ks.getCertificateChain(alias);
+
             BouncyCastleProvider provider = new BouncyCastleProvider();
             Security.addProvider(provider);
 
-            LogUtil.info(getClassName(), "key : " + pk.toString());
-
-            sign(pathDocs, pathDocs , chain, pk, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
-                    "Test", "Ghent", null, null, null, 0);
-        } catch (IOException | GeneralSecurityException e) {
+            sign(name, absolutePath, absolutePath , chain, pk, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
+                    "Approval", "Kecak Indonesia", null, null, null, 0);
+        } catch (Exception e) {
+            LogUtil.error(getClassName(), e, "error : " + e.getMessage());
             throw new RuntimeException(e);
         }
 
@@ -116,14 +125,124 @@ public class DigitalCertificate extends FileUpload{
         return new FormRowSet();
     }
 
-    public void sign(String src, String dest, Certificate[] chain, PrivateKey pk,
+    public char[] getPassword(){
+        SetupManager sm = (SetupManager) SecurityUtil.getApplicationContext().getBean("setupManager");
+        String password = sm.getSettingValue("securityKey");
+        return (password == null) ? "password123".toCharArray() : password.toCharArray();
+    }
+
+    public void generateKey(String username, char[] pass) throws Exception {
+        KeyPair generatedKeyPair = generateKeyPair();
+        String filename = "wflow/app_certificate/" + username + ".pkcs12";
+        storeToPKCS12(filename, pass, generatedKeyPair);
+        KeyPair retrievedKeyPair = loadFromPKCS12(filename, pass);
+
+        // you can validate by generating a signature and verifying it or by
+        // comparing the moduli by first casting to RSAPublicKey, e.g.:
+
+        //RSAPublicKey pubKey = (RSAPublicKey) generatedKeyPair.getPublic();
+        //RSAPrivateKey privateKey = (RSAPrivateKey) retrievedKeyPair.getPrivate();
+
+    }
+
+    private static KeyPair loadFromPKCS12(String filename, char[] password)
+            throws KeyStoreException, NoSuchAlgorithmException, IOException, UnrecoverableEntryException {
+        KeyStore pkcs12KeyStore = KeyStore.getInstance("PKCS12");
+
+        try (FileInputStream fis = new FileInputStream(filename);) {
+            pkcs12KeyStore.load(fis, password);
+        } catch (CertificateException e) {
+            throw new RuntimeException(e);
+        }
+
+        KeyStore.ProtectionParameter param = new KeyStore.PasswordProtection(password);
+        KeyStore.Entry entry = pkcs12KeyStore.getEntry("kecak", param);
+        if (!(entry instanceof KeyStore.PrivateKeyEntry)) {
+            throw new KeyStoreException("That's not a private key!");
+        }
+        KeyStore.PrivateKeyEntry privKeyEntry = (KeyStore.PrivateKeyEntry) entry;
+        PublicKey publicKey = privKeyEntry.getCertificate().getPublicKey();
+        PrivateKey privateKey = privKeyEntry.getPrivateKey();
+        return new KeyPair(publicKey, privateKey);
+    }
+
+    public static Certificate selfSign(KeyPair keyPair, String subjectDN)
+            throws OperatorCreationException, CertificateException, IOException
+    {
+        Provider bcProvider = new BouncyCastleProvider();
+        Security.addProvider(bcProvider);
+
+        long now = System.currentTimeMillis();
+        Date startDate = new Date(now);
+
+        X500Name dnName = new X500Name(subjectDN);
+
+        // Using the current timestamp as the certificate serial number
+        BigInteger certSerialNumber = new BigInteger(Long.toString(now));
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(startDate);
+        // 1 Yr validity
+        calendar.add(Calendar.YEAR, 1);
+
+        Date endDate = calendar.getTime();
+
+        // Use appropriate signature algorithm based on your keyPair algorithm.
+        String signatureAlgorithm = "SHA256WithRSA";
+
+        SubjectPublicKeyInfo subjectPublicKeyInfo = SubjectPublicKeyInfo.getInstance(keyPair
+                .getPublic().getEncoded());
+
+        X509v3CertificateBuilder certificateBuilder = new X509v3CertificateBuilder(dnName,
+                certSerialNumber, startDate, endDate, dnName, subjectPublicKeyInfo);
+
+        ContentSigner contentSigner = new JcaContentSignerBuilder(signatureAlgorithm).setProvider(
+                bcProvider).build(keyPair.getPrivate());
+
+        X509CertificateHolder certificateHolder = certificateBuilder.build(contentSigner);
+
+        return new JcaX509CertificateConverter()
+                .getCertificate(certificateHolder);
+    }
+
+    private static void storeToPKCS12(
+            String filename, char[] password,
+            KeyPair generatedKeyPair) throws KeyStoreException, IOException,
+            NoSuchAlgorithmException, CertificateException, FileNotFoundException,
+            OperatorCreationException {
+
+        Certificate selfSignedCertificate = selfSign(generatedKeyPair, "CN=kecak");
+
+        KeyStore pkcs12KeyStore = KeyStore.getInstance("PKCS12");
+        pkcs12KeyStore.load(null, null);
+
+        KeyStore.Entry entry = new KeyStore.PrivateKeyEntry(generatedKeyPair.getPrivate(),
+                new Certificate[] { selfSignedCertificate });
+        KeyStore.ProtectionParameter param = new KeyStore.PasswordProtection(password);
+
+        pkcs12KeyStore.setEntry("kecak", entry, param);
+
+        try (FileOutputStream fos = new FileOutputStream(filename)) {
+            pkcs12KeyStore.store(fos, password);
+        }
+    }
+
+    public static KeyPair generateKeyPair() throws Exception {
+        KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+        generator.initialize(2048, new SecureRandom());
+
+        return generator.generateKeyPair();
+    }
+
+    public void sign(String name, String src, String dest, Certificate[] chain, PrivateKey pk,
                      String digestAlgorithm, String provider, PdfSigner.CryptoStandard subfilter,
                      String reason, String location, Collection<ICrlClient> crlList,
                      IOcspClient ocspClient, ITSAClient tsaClient, int estimatedSize) throws IOException, GeneralSecurityException {
         PdfReader reader = new PdfReader(src);
-        PdfSigner signer = new PdfSigner(reader, Files.newOutputStream(Paths.get(dest)), new StampingProperties());
+        PdfSigner signer = new PdfSigner(reader, new FileOutputStream(dest, true), new StampingProperties());
 
         // Create the signature appearance
+
         Rectangle rect = new Rectangle(36, 648, 200, 100);
         PdfSignatureAppearance appearance = signer.getSignatureAppearance();
         appearance
@@ -135,13 +254,15 @@ public class DigitalCertificate extends FileUpload{
                 .setReuseAppearance(false)
                 .setPageRect(rect)
                 .setPageNumber(1);
-        signer.setFieldName("sig");
+        signer.setFieldName(name);
 
         IExternalSignature pks = new PrivateKeySignature(pk, digestAlgorithm, provider);
         IExternalDigest digest = new BouncyCastleDigest();
 
         // Sign the document using the detached mode, CMS or CAdES equivalent.
         signer.signDetached(digest, pks, chain, crlList, ocspClient, tsaClient, estimatedSize, subfilter);
+        String outer = signer.getDocument().toString();
+        LogUtil.info(getClassName(), "get document : " + outer);
     }
 
     @Override
