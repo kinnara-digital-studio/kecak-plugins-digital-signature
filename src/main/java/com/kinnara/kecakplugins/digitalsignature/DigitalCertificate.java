@@ -79,28 +79,32 @@ public class DigitalCertificate extends FileUpload{
 
     public FormRowSet formatData(FormData formData) {
 
-        LogUtil.info(getClassName(), "new plugins 1");
+        LogUtil.info(getClassName(), "new plugins 11");
 
         //get uploaded file from app_temp
         String filePath = FormUtil.getElementPropertyValue(this, formData);
         LogUtil.info(getClassName(), "path : " + filePath);
+        LogUtil.info(getClassName(), "root : " + FileManager.getBaseDirectory());
         File fileObj = FileManager.getFileByPath(filePath);
         String absolutePath = fileObj.getAbsolutePath();
+        LogUtil.info(getClassName(), "abs path : " + absolutePath);
+
 
         //get password from tomcat
         WorkflowUserManager wum = (WorkflowUserManager)AppUtil.getApplicationContext().getBean("workflowUserManager");
         User user = wum.getCurrentUser();
         String username = user.getUsername();
-        String name = user.getFirstName() + " " + user.getLastName() + " " + user.getEmail();
         char[] pass = getPassword();
+//        char[] pass = "Kinnara123".toCharArray();
 
         try {
-            //get password
             URL url = ResourceUtils.getURL("wflow/app_certificate/"+username+".pkcs12");
             File certFile = new File(url.getPath());
             if(!certFile.exists()){
-                generateKey(username, pass, name);
+                generateKey(username, pass, user.getFirstName()+" "+user.getLastName());
             }
+
+//            URL url = ResourceUtils.getURL("wflow/app_certificate/kinnarastudio.p12");
             certFile = ResourceUtils.getFile(url);
             String path = certFile.getAbsolutePath();
 
@@ -109,13 +113,14 @@ public class DigitalCertificate extends FileUpload{
             String alias = ks.aliases().nextElement();
             Certificate[] chain = ks.getCertificateChain(alias);
 
-            KeyPair retrievedKeyPair = loadFromPKCS12(path, pass);
-            PrivateKey privateKey = retrievedKeyPair.getPrivate();
+//            KeyPair retrievedKeyPair = loadFromPKCS12(path, pass);
+//            PrivateKey privateKey = retrievedKeyPair.getPrivate();
+            PrivateKey privateKey = (PrivateKey) ks.getKey(alias, pass);
 
             BouncyCastleProvider provider = new BouncyCastleProvider();
             Security.addProvider(provider);
 
-            sign(name, absolutePath, absolutePath , chain, privateKey, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
+            sign(user.getFirstName()+" "+user.getLastName(), absolutePath, absolutePath , chain, privateKey, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
                     "Approval", "Kecak Indonesia", null, null, null, 0);
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -126,8 +131,7 @@ public class DigitalCertificate extends FileUpload{
         }
 
         FormStoreBinder formStoreBinder = FormUtil.findStoreBinder(this);
-        FormRowSet rowSet = formStoreBinder.store(this, new FormRowSet(), formData);
-        return rowSet;
+        return formStoreBinder.store(this, new FormRowSet(), formData);
     }
 
     public char[] getPassword(){
@@ -136,10 +140,10 @@ public class DigitalCertificate extends FileUpload{
         return (password == null) ? "password123".toCharArray() : password.toCharArray();
     }
 
-    public void generateKey(String username, char[] pass, String fullname) throws Exception {
+    public void generateKey(String username, char[] pass, String name) throws Exception {
         KeyPair generatedKeyPair = generateKeyPair();
         String filename = "wflow/app_certificate/" + username + ".pkcs12";
-        storeToPKCS12(filename, pass, generatedKeyPair, fullname);
+        storeToPKCS12(filename, pass, generatedKeyPair, name);
         //  KeyPair retrievedKeyPair = loadFromPKCS12(filename, pass);
 
         // you can validate by generating a signature and verifying it or by
@@ -161,7 +165,8 @@ public class DigitalCertificate extends FileUpload{
         }
 
         KeyStore.ProtectionParameter param = new KeyStore.PasswordProtection(password);
-        KeyStore.Entry entry = pkcs12KeyStore.getEntry("kecak", param);
+        String alias = pkcs12KeyStore.aliases().nextElement();
+        KeyStore.Entry entry = pkcs12KeyStore.getEntry(alias, param);
         if (!(entry instanceof KeyStore.PrivateKeyEntry)) {
             throw new KeyStoreException("That's not a private key!");
         }
@@ -212,11 +217,11 @@ public class DigitalCertificate extends FileUpload{
 
     private static void storeToPKCS12(
             String filename, char[] password,
-            KeyPair generatedKeyPair, String username) throws KeyStoreException, IOException,
-            NoSuchAlgorithmException, CertificateException, FileNotFoundException,
+            KeyPair generatedKeyPair, String name) throws KeyStoreException, IOException,
+            NoSuchAlgorithmException, CertificateException,
             OperatorCreationException {
 
-        Certificate selfSignedCertificate = selfSign(generatedKeyPair, "CN=" + username);
+        Certificate selfSignedCertificate = selfSign(generatedKeyPair, "CN=" + name);
 
         KeyStore pkcs12KeyStore = KeyStore.getInstance("PKCS12");
         pkcs12KeyStore.load(null, null);
@@ -224,8 +229,8 @@ public class DigitalCertificate extends FileUpload{
         KeyStore.Entry entry = new KeyStore.PrivateKeyEntry(generatedKeyPair.getPrivate(),
                 new Certificate[] { selfSignedCertificate });
         KeyStore.ProtectionParameter param = new KeyStore.PasswordProtection(password);
-
-        pkcs12KeyStore.setEntry("kecak", entry, param);
+//        String alias = pkcs12KeyStore.aliases().nextElement();
+        pkcs12KeyStore.setEntry(name, entry, param);
 
         try (FileOutputStream fos = new FileOutputStream(filename)) {
             pkcs12KeyStore.store(fos, password);
@@ -240,7 +245,7 @@ public class DigitalCertificate extends FileUpload{
     }
 
     public void sign(String name, String src, String dest, Certificate[] chain, PrivateKey pk,
-                     String digestAlgorithm, String provider, PdfSigner.CryptoStandard subfilter,
+                     String digestAlgorithm, String provider, PdfSigner.CryptoStandard subFilter,
                      String reason, String location, Collection<ICrlClient> crlList,
                      IOcspClient ocspClient, ITSAClient tsaClient, int estimatedSize) throws IOException, GeneralSecurityException {
         PdfReader reader = new PdfReader(src);
@@ -248,26 +253,25 @@ public class DigitalCertificate extends FileUpload{
 
         // Create the signature appearance
 
-        Rectangle rect = new Rectangle(0, 148, 200, 100);
-        PdfSignatureAppearance appearance = signer.getSignatureAppearance();
-
-        appearance
-                .setReason(reason)
-                .setLocation(location)
-
-                // Specify if the appearance before field is signed will be used
-                // as a background for the signed field. The "false" value is the default value.
-                .setReuseAppearance(false)
-                .setPageRect(rect)
-                .setPageNumber(1);
-        signer.setFieldName(name);
-
+//        Rectangle rect = new Rectangle(0, 0, 200, 100);
+//        PdfSignatureAppearance appearance = signer.getSignatureAppearance();
+//
+//        appearance
+//                .setReason(reason)
+//                .setLocation(location)
+//
+//                // Specify if the appearance before field is signed will be used
+//                // as a background for the signed field. The "false" value is the default value.
+//                .setReuseAppearance(false)
+//                .setPageRect(rect)
+//                .setPageNumber(1);
+//        signer.setFieldName(name);
 
         IExternalSignature pks = new PrivateKeySignature(pk, digestAlgorithm, provider);
         IExternalDigest digest = new BouncyCastleDigest();
 
         // Sign the document using the detached mode, CMS or CAdES equivalent.
-        signer.signDetached(digest, pks, chain, crlList, ocspClient, tsaClient, estimatedSize, subfilter);
+        signer.signDetached(digest, pks, chain, crlList, ocspClient, tsaClient, estimatedSize, subFilter);
     }
 
     @Override
