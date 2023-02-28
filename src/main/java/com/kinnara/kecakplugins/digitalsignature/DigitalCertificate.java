@@ -1,18 +1,14 @@
 package com.kinnara.kecakplugins.digitalsignature;
 
-import com.itextpdf.kernel.geom.Rectangle;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfName;
 import com.itextpdf.kernel.pdf.PdfReader;
 import com.itextpdf.kernel.pdf.StampingProperties;
-import com.itextpdf.signatures.BouncyCastleDigest;
-import com.itextpdf.signatures.ICrlClient;
-import com.itextpdf.signatures.DigestAlgorithms;
-import com.itextpdf.signatures.IExternalDigest;
-import com.itextpdf.signatures.IExternalSignature;
-import com.itextpdf.signatures.IOcspClient;
-import com.itextpdf.signatures.PdfSignatureAppearance;
-import com.itextpdf.signatures.PdfSigner;
-import com.itextpdf.signatures.PrivateKeySignature;
-import com.itextpdf.signatures.ITSAClient;
+import com.itextpdf.kernel.pdf.annot.PdfWidgetAnnotation;
+import com.itextpdf.signatures.*;
+import com.itextpdf.forms.PdfAcroForm;
+import com.itextpdf.forms.fields.PdfFormField;
+import com.mysql.cj.log.Log;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.cert.X509CertificateHolder;
@@ -24,9 +20,7 @@ import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.lib.FileUpload;
-import org.joget.apps.form.model.FormData;
-import org.joget.apps.form.model.FormRowSet;
-import org.joget.apps.form.model.FormStoreBinder;
+import org.joget.apps.form.model.*;
 import org.joget.apps.form.service.FormUtil;
 import org.joget.commons.util.FileManager;
 import org.joget.commons.util.LogUtil;
@@ -79,25 +73,32 @@ public class DigitalCertificate extends FileUpload{
 
     public FormRowSet formatData(FormData formData) {
 
-        LogUtil.info(getClassName(), "new plugins 11");
+        LogUtil.info(getClassName(), "new plugins 4");
 
-        //get uploaded file from app_temp
-        String filePath = FormUtil.getElementPropertyValue(this, formData);
-        LogUtil.info(getClassName(), "path : " + filePath);
-        LogUtil.info(getClassName(), "root : " + FileManager.getBaseDirectory());
-        File fileObj = FileManager.getFileByPath(filePath);
-        String absolutePath = fileObj.getAbsolutePath();
-        LogUtil.info(getClassName(), "abs path : " + absolutePath);
-
-
-        //get password from tomcat
         WorkflowUserManager wum = (WorkflowUserManager)AppUtil.getApplicationContext().getBean("workflowUserManager");
         User user = wum.getCurrentUser();
         String username = user.getUsername();
         char[] pass = getPassword();
 //        char[] pass = "Kinnara123".toCharArray();
 
+        //get uploaded file from app_temp
+        String filePath = FormUtil.getElementPropertyValue(this, formData);
+        File fileObj = new File(filePath);
+        String absolutePath;
+
         try {
+
+            if(fileObj.exists()){
+                fileObj = FileManager.getFileByPath(filePath);
+            }else{
+                //update current file
+                Form form = FormUtil.findRootForm(this);
+                URL fileUrl = ResourceUtils.getURL("wflow/app_formuploads/"+form.getPropertyString(FormUtil.PROPERTY_ID)+"/"+form.getPrimaryKeyValue(formData)+"/"+filePath);
+                fileObj = ResourceUtils.getFile(fileUrl.getPath());
+            }
+            absolutePath = fileObj.getAbsolutePath();
+
+            //get digital certificate of current user login
             URL url = ResourceUtils.getURL("wflow/app_certificate/"+username+".pkcs12");
             File certFile = new File(url.getPath());
             if(!certFile.exists()){
@@ -229,7 +230,6 @@ public class DigitalCertificate extends FileUpload{
         KeyStore.Entry entry = new KeyStore.PrivateKeyEntry(generatedKeyPair.getPrivate(),
                 new Certificate[] { selfSignedCertificate });
         KeyStore.ProtectionParameter param = new KeyStore.PasswordProtection(password);
-//        String alias = pkcs12KeyStore.aliases().nextElement();
         pkcs12KeyStore.setEntry(name, entry, param);
 
         try (FileOutputStream fos = new FileOutputStream(filename)) {
@@ -248,6 +248,12 @@ public class DigitalCertificate extends FileUpload{
                      String digestAlgorithm, String provider, PdfSigner.CryptoStandard subFilter,
                      String reason, String location, Collection<ICrlClient> crlList,
                      IOcspClient ocspClient, ITSAClient tsaClient, int estimatedSize) throws IOException, GeneralSecurityException {
+
+
+        //check if pdf signed with same user. if signed with same user, clear.
+        PdfReader testReader = new PdfReader(src);
+        clearSameCertificate(testReader, name);
+
         PdfReader reader = new PdfReader(src);
         PdfSigner signer = new PdfSigner(reader, new FileOutputStream(dest, true), new StampingProperties());
 
@@ -272,6 +278,25 @@ public class DigitalCertificate extends FileUpload{
 
         // Sign the document using the detached mode, CMS or CAdES equivalent.
         signer.signDetached(digest, pks, chain, crlList, ocspClient, tsaClient, estimatedSize, subFilter);
+    }
+
+    public void clearSameCertificate(PdfReader reader, String username)
+    {
+        PdfDocument pdfDocument = new PdfDocument(reader);
+        SignatureUtil signatureUtil = new SignatureUtil(pdfDocument);
+        for (String name : signatureUtil.getSignatureNames()) {
+            if(name.compareTo(username) == 0){
+                PdfAcroForm acroForm = PdfAcroForm.getAcroForm(pdfDocument, false);
+                PdfFormField pdfFormField = acroForm.getField(name);
+                if (null != pdfFormField.getPdfObject().remove(PdfName.V))
+                    pdfFormField.getPdfObject().setModified();
+                for (PdfWidgetAnnotation pdfWidgetAnnotation : pdfFormField.getWidgets()) {
+                    if (pdfWidgetAnnotation.getPdfObject().remove(PdfName.AP) != null)
+                        pdfWidgetAnnotation.getPdfObject().setModified();
+                }
+                break;
+            }
+        }
     }
 
     @Override
