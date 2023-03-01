@@ -1,14 +1,12 @@
 package com.kinnara.kecakplugins.digitalsignature;
 
-import com.itextpdf.kernel.pdf.PdfDocument;
-import com.itextpdf.kernel.pdf.PdfName;
-import com.itextpdf.kernel.pdf.PdfReader;
-import com.itextpdf.kernel.pdf.StampingProperties;
+import com.itextpdf.kernel.pdf.*;
 import com.itextpdf.kernel.pdf.annot.PdfWidgetAnnotation;
 import com.itextpdf.signatures.*;
 import com.itextpdf.forms.PdfAcroForm;
 import com.itextpdf.forms.fields.PdfFormField;
 import com.mysql.cj.log.Log;
+import org.apache.xpath.operations.Bool;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.cert.X509CertificateHolder;
@@ -73,17 +71,17 @@ public class DigitalCertificate extends FileUpload{
 
     public FormRowSet formatData(FormData formData) {
 
-        LogUtil.info(getClassName(), "new plugins 4");
+        LogUtil.info(getClassName(), "new plugins 14");
 
         WorkflowUserManager wum = (WorkflowUserManager)AppUtil.getApplicationContext().getBean("workflowUserManager");
         User user = wum.getCurrentUser();
         String username = user.getUsername();
+        String name = user.getFirstName()+" "+user.getLastName();
         char[] pass = getPassword();
-//        char[] pass = "Kinnara123".toCharArray();
 
         //get uploaded file from app_temp
         String filePath = FormUtil.getElementPropertyValue(this, formData);
-        File fileObj = new File(filePath);
+        File fileObj = new File(FileManager.getBaseDirectory()+"/"+filePath);
         String absolutePath;
 
         try {
@@ -98,31 +96,30 @@ public class DigitalCertificate extends FileUpload{
             }
             absolutePath = fileObj.getAbsolutePath();
 
-            //get digital certificate of current user login
-            URL url = ResourceUtils.getURL("wflow/app_certificate/"+username+".pkcs12");
-            File certFile = new File(url.getPath());
-            if(!certFile.exists()){
-                generateKey(username, pass, user.getFirstName()+" "+user.getLastName());
+            Boolean isSigned = clearSameCertificate(absolutePath, name);
+            if(!isSigned){
+                //get digital certificate of current user login
+                URL url = ResourceUtils.getURL("wflow/app_certificate/"+username+".pkcs12");
+                File certFile = new File(url.getPath());
+                if(!certFile.exists()){
+                    generateKey(username, pass, user.getFirstName()+" "+user.getLastName());
+                }
+
+                certFile = ResourceUtils.getFile(url);
+                String path = certFile.getAbsolutePath();
+
+                KeyStore ks = KeyStore.getInstance("pkcs12");
+                ks.load(Files.newInputStream(Paths.get(path)), pass);
+                String alias = ks.aliases().nextElement();
+                Certificate[] chain = ks.getCertificateChain(alias);
+                PrivateKey privateKey = (PrivateKey) ks.getKey(alias, pass);
+
+                BouncyCastleProvider provider = new BouncyCastleProvider();
+                Security.addProvider(provider);
+
+                sign(name, absolutePath, absolutePath , chain, privateKey, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
+                        "Approval", "Kecak Indonesia", null, null, null, 0);
             }
-
-//            URL url = ResourceUtils.getURL("wflow/app_certificate/kinnarastudio.p12");
-            certFile = ResourceUtils.getFile(url);
-            String path = certFile.getAbsolutePath();
-
-            KeyStore ks = KeyStore.getInstance("pkcs12");
-            ks.load(Files.newInputStream(Paths.get(path)), pass);
-            String alias = ks.aliases().nextElement();
-            Certificate[] chain = ks.getCertificateChain(alias);
-
-//            KeyPair retrievedKeyPair = loadFromPKCS12(path, pass);
-//            PrivateKey privateKey = retrievedKeyPair.getPrivate();
-            PrivateKey privateKey = (PrivateKey) ks.getKey(alias, pass);
-
-            BouncyCastleProvider provider = new BouncyCastleProvider();
-            Security.addProvider(provider);
-
-            sign(user.getFirstName()+" "+user.getLastName(), absolutePath, absolutePath , chain, privateKey, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
-                    "Approval", "Kecak Indonesia", null, null, null, 0);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -145,37 +142,8 @@ public class DigitalCertificate extends FileUpload{
         KeyPair generatedKeyPair = generateKeyPair();
         String filename = "wflow/app_certificate/" + username + ".pkcs12";
         storeToPKCS12(filename, pass, generatedKeyPair, name);
-        //  KeyPair retrievedKeyPair = loadFromPKCS12(filename, pass);
-
-        // you can validate by generating a signature and verifying it or by
-        // comparing the moduli by first casting to RSAPublicKey, e.g.:
-
-        //RSAPublicKey pubKey = (RSAPublicKey) generatedKeyPair.getPublic();
-        //RSAPrivateKey privateKey = (RSAPrivateKey) retrievedKeyPair.getPrivate();
-
     }
 
-    private static KeyPair loadFromPKCS12(String filename, char[] password)
-            throws KeyStoreException, NoSuchAlgorithmException, IOException, UnrecoverableEntryException {
-        KeyStore pkcs12KeyStore = KeyStore.getInstance("PKCS12");
-
-        try (FileInputStream fis = new FileInputStream(filename);) {
-            pkcs12KeyStore.load(fis, password);
-        } catch (CertificateException e) {
-            throw new RuntimeException(e);
-        }
-
-        KeyStore.ProtectionParameter param = new KeyStore.PasswordProtection(password);
-        String alias = pkcs12KeyStore.aliases().nextElement();
-        KeyStore.Entry entry = pkcs12KeyStore.getEntry(alias, param);
-        if (!(entry instanceof KeyStore.PrivateKeyEntry)) {
-            throw new KeyStoreException("That's not a private key!");
-        }
-        KeyStore.PrivateKeyEntry privKeyEntry = (KeyStore.PrivateKeyEntry) entry;
-        PublicKey publicKey = privKeyEntry.getCertificate().getPublicKey();
-        PrivateKey privateKey = privKeyEntry.getPrivateKey();
-        return new KeyPair(publicKey, privateKey);
-    }
 
     public static Certificate selfSign(KeyPair keyPair, String subjectDN)
             throws OperatorCreationException, CertificateException, IOException
@@ -249,29 +217,11 @@ public class DigitalCertificate extends FileUpload{
                      String reason, String location, Collection<ICrlClient> crlList,
                      IOcspClient ocspClient, ITSAClient tsaClient, int estimatedSize) throws IOException, GeneralSecurityException {
 
-
-        //check if pdf signed with same user. if signed with same user, clear.
-        PdfReader testReader = new PdfReader(src);
-        clearSameCertificate(testReader, name);
-
         PdfReader reader = new PdfReader(src);
         PdfSigner signer = new PdfSigner(reader, new FileOutputStream(dest, true), new StampingProperties());
 
-        // Create the signature appearance
-
-//        Rectangle rect = new Rectangle(0, 0, 200, 100);
-//        PdfSignatureAppearance appearance = signer.getSignatureAppearance();
-//
-//        appearance
-//                .setReason(reason)
-//                .setLocation(location)
-//
-//                // Specify if the appearance before field is signed will be used
-//                // as a background for the signed field. The "false" value is the default value.
-//                .setReuseAppearance(false)
-//                .setPageRect(rect)
-//                .setPageNumber(1);
-//        signer.setFieldName(name);
+        signer.setFieldName(name);
+        signer.setSignDate(Calendar.getInstance());
 
         IExternalSignature pks = new PrivateKeySignature(pk, digestAlgorithm, provider);
         IExternalDigest digest = new BouncyCastleDigest();
@@ -280,23 +230,21 @@ public class DigitalCertificate extends FileUpload{
         signer.signDetached(digest, pks, chain, crlList, ocspClient, tsaClient, estimatedSize, subFilter);
     }
 
-    public void clearSameCertificate(PdfReader reader, String username)
-    {
-        PdfDocument pdfDocument = new PdfDocument(reader);
+    public boolean clearSameCertificate(String path, String username) throws IOException {
+        Boolean isSigned = false;
+        PdfReader pdfReader = new PdfReader(path);
+        PdfWriter pdfWriter = new PdfWriter(new FileOutputStream(path, true));
+        PdfDocument pdfDocument = new PdfDocument(pdfReader, pdfWriter, new StampingProperties());
+
         SignatureUtil signatureUtil = new SignatureUtil(pdfDocument);
+
         for (String name : signatureUtil.getSignatureNames()) {
             if(name.compareTo(username) == 0){
-                PdfAcroForm acroForm = PdfAcroForm.getAcroForm(pdfDocument, false);
-                PdfFormField pdfFormField = acroForm.getField(name);
-                if (null != pdfFormField.getPdfObject().remove(PdfName.V))
-                    pdfFormField.getPdfObject().setModified();
-                for (PdfWidgetAnnotation pdfWidgetAnnotation : pdfFormField.getWidgets()) {
-                    if (pdfWidgetAnnotation.getPdfObject().remove(PdfName.AP) != null)
-                        pdfWidgetAnnotation.getPdfObject().setModified();
-                }
+                isSigned = true;
                 break;
             }
         }
+        return isSigned;
     }
 
     @Override
