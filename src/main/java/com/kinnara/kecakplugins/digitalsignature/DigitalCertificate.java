@@ -75,10 +75,7 @@ public class DigitalCertificate extends FileUpload{
 
         WorkflowUserManager wum = (WorkflowUserManager)AppUtil.getApplicationContext().getBean("workflowUserManager");
         User user = wum.getCurrentUser();
-        String username = user.getUsername();
-        String name = user.getFirstName()+" "+user.getLastName();
-        char[] pass = getPassword();
-
+        String name = user.getFirstName()+user.getLastName();
         //get uploaded file from app_temp
         String filePath = FormUtil.getElementPropertyValue(this, formData);
         File fileObj = new File(FileManager.getBaseDirectory()+"/"+filePath);
@@ -95,14 +92,16 @@ public class DigitalCertificate extends FileUpload{
                 fileObj = ResourceUtils.getFile(fileUrl.getPath());
             }
             absolutePath = fileObj.getAbsolutePath();
-
             Boolean isSigned = clearSameCertificate(absolutePath, name);
             if(!isSigned){
                 //get digital certificate of current user login
+                String username = user.getUsername();
                 URL url = ResourceUtils.getURL("wflow/app_certificate/"+username+".pkcs12");
                 File certFile = new File(url.getPath());
+                char[] pass = getPassword();
+
                 if(!certFile.exists()){
-                    generateKey(username, pass, user.getFirstName()+" "+user.getLastName());
+                    generateKey(username, pass, name);
                 }
 
                 certFile = ResourceUtils.getFile(url);
@@ -222,6 +221,8 @@ public class DigitalCertificate extends FileUpload{
 
         signer.setFieldName(name);
         signer.setSignDate(Calendar.getInstance());
+        PdfSignatureAppearance signatureAppearance = signer.getSignatureAppearance();
+        signatureAppearance.setReason(reason).setLocation(location);
 
         IExternalSignature pks = new PrivateKeySignature(pk, digestAlgorithm, provider);
         IExternalDigest digest = new BouncyCastleDigest();
