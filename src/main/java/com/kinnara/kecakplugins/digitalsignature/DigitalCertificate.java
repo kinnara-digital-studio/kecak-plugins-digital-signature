@@ -34,6 +34,7 @@ import org.springframework.util.ResourceUtils;
 import java.io.*;
 import java.math.BigInteger;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.*;
@@ -101,6 +102,11 @@ public class DigitalCertificate extends FileUpload{
                 char[] pass = getPassword();
 
                 if(!certFile.exists()){
+                    URL baseUrl = ResourceUtils.getURL("wflow/app_certificate/");
+                    File folder = new File(baseUrl.getPath());
+                    if (!folder.exists()) {
+                        folder.mkdirs();
+                    }
                     generateKey(username, pass, name);
                 }
 
@@ -139,6 +145,7 @@ public class DigitalCertificate extends FileUpload{
 
     public void generateKey(String username, char[] pass, String name) throws Exception {
         KeyPair generatedKeyPair = generateKeyPair();
+
         String filename = "wflow/app_certificate/" + username + ".pkcs12";
         storeToPKCS12(filename, pass, generatedKeyPair, name);
     }
