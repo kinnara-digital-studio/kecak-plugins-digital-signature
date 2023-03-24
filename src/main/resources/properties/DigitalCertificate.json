@@ -1,20 +1,36 @@
 [
   {
-    "title": "Binder",
+    "title": "Certificate Attributes",
     "properties" : [
       {
-        "name" : "loadBinder",
-        "label" : "Load Binder",
-        "type" : "elementselect",
-        "options_ajax" : "[CONTEXT_PATH]/web/property/json/getElements?classname=org.joget.apps.form.model.FormLoadBinder",
-        "url" : "[CONTEXT_PATH]/web/property/json[APP_PATH]/getPropertyOptions"
+        "name": "organizationalUnit",
+        "label": "@@digitalCertificate.organizationalUnit@@",
+        "description": "@@digitalCertificate.organizationalUnit.desc@@",
+        "type": "textfield"
       },
       {
-        "name" : "storeBinder",
-        "label" : "Store Binder",
-        "type" : "elementselect",
-        "options_ajax" : "[CONTEXT_PATH]/web/property/json/getElements?classname=org.joget.apps.form.model.FormStoreBinder",
-        "url" : "[CONTEXT_PATH]/web/property/json[APP_PATH]/getPropertyOptions"
+        "name": "organization",
+        "label": "@@digitalCertificate.organization@@",
+        "description": "@@digitalCertificate.organization.desc@@",
+        "type": "textfield"
+      },
+      {
+        "name": "locality",
+        "label": "@@digitalCertificate.locality@@",
+        "description": "@@digitalCertificate.locality.desc@@",
+        "type": "textfield"
+      },
+      {
+        "name": "stateOrProvince",
+        "label": "@@digitalCertificate.stateOrProvince@@",
+        "description": "@@digitalCertificate.stateOrProvince.desc@@",
+        "type": "textfield"
+      },
+      {
+        "name": "country",
+        "label": "@@digitalCertificate.country@@",
+        "description": "@@digitalCertificate.country.desc@@",
+        "type": "textfield"
       }
     ]
   }

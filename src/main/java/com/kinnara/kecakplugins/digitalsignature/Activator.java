@@ -15,7 +15,7 @@ public class Activator implements BundleActivator {
 
         //Register plugin here
         registrationList.add(context.registerService(DigitalSignature.class.getName(), new DigitalSignature(), null));
-        registrationList.add(context.registerService(DigitalCertificate.class.getName(), new DigitalCertificate(), null));
+        registrationList.add(context.registerService(DigitalCertificateFileUpload.class.getName(), new DigitalCertificateFileUpload(), null));
         registrationList.add(context.registerService(QRElement.class.getName(), new QRElement(), null));
     }
 

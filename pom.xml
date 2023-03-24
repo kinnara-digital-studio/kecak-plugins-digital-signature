@@ -190,7 +190,7 @@
         <dependency>
             <groupId>org.joget</groupId>
             <artifactId>wflow-core</artifactId>
-            <version>7.0-SNAPSHOT</version>
+            <version>5.0-SNAPSHOT</version>
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
@@ -311,6 +311,14 @@
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-api</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>xml-apis</groupId>
+                    <artifactId>xml-apis</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>xerces</groupId>
+                    <artifactId>xercesImpl</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -325,6 +333,14 @@
                 <exclusion>
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>xml-apis</groupId>
+                    <artifactId>xml-apis</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>xerces</groupId>
+                    <artifactId>xercesImpl</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -341,6 +357,14 @@
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-api</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>xml-apis</groupId>
+                    <artifactId>xml-apis</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>xerces</groupId>
+                    <artifactId>xercesImpl</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -355,6 +379,14 @@
                 <exclusion>
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>xml-apis</groupId>
+                    <artifactId>xml-apis</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>xerces</groupId>
+                    <artifactId>xercesImpl</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -371,6 +403,14 @@
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-api</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>xml-apis</groupId>
+                    <artifactId>xml-apis</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>xerces</groupId>
+                    <artifactId>xercesImpl</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -386,6 +426,14 @@
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-api</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>xml-apis</groupId>
+                    <artifactId>xml-apis</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>xerces</groupId>
+                    <artifactId>xercesImpl</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
 
@@ -396,11 +444,19 @@
             <exclusions>
                 <exclusion>
                     <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-jdk14</artifactId>
+                    <artifactId>slf4j-jdk</artifactId>
                 </exclusion>
                 <exclusion>
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>xml-apis</groupId>
+                    <artifactId>xml-apis</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>xerces</groupId>
+                    <artifactId>xercesImpl</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -408,7 +464,7 @@
             <groupId>com.itextpdf</groupId>
             <artifactId>bouncy-castle-adapter</artifactId>
             <version>8.0.0-SNAPSHOT</version>
-<!--            <exclusions>-->
+            <exclusions>
 <!--                <exclusion>-->
 <!--                    <groupId>org.slf4j</groupId>-->
 <!--                    <artifactId>slf4j-jdk14</artifactId>-->
@@ -417,9 +473,23 @@
 <!--                    <groupId>org.slf4j</groupId>-->
 <!--                    <artifactId>slf4j-api</artifactId>-->
 <!--                </exclusion>-->
-<!--            </exclusions>-->
+                <exclusion>
+                    <groupId>xml-apis</groupId>
+                    <artifactId>xml-apis</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>xerces</groupId>
+                    <artifactId>xercesImpl</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
-<!--        <dependency>-->
+
+        <dependency>
+            <groupId>com.kinnarastudio</groupId>
+            <artifactId>kinnara-commons</artifactId>
+            <version>3.0.0</version>
+        </dependency>
+        <!--        <dependency>-->
 <!--            <groupId>org.bouncycastle</groupId>-->
 <!--            <artifactId>bcpkix-jdk15on</artifactId>-->
 <!--            <version>1.70</version>-->
@@ -433,15 +503,4 @@
 <!--        </dependency>-->
         <!-- End change plugin specific dependencies here -->
     </dependencies>
-
-    <distributionManagement>
-        <repository>
-            <id>internal</id>
-            <url>http://dev.joget.org/archiva/repository/internal</url>
-        </repository>
-        <snapshotRepository>
-            <id>snapshots</id>
-            <url>http://dev.joget.org/archiva/repository/snapshots</url>
-        </snapshotRepository>
-    </distributionManagement>
 </project>
