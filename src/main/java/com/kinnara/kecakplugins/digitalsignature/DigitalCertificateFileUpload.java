@@ -1,5 +1,6 @@
 package com.kinnara.kecakplugins.digitalsignature;
 
+import com.itextpdf.forms.PdfAcroForm;
 import com.itextpdf.kernel.pdf.*;
 import com.itextpdf.signatures.*;
 import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateException;
@@ -92,7 +93,8 @@ public class DigitalCertificateFileUpload extends FileUpload {
                 fileObj = ResourceUtils.getFile(fileUrl.getPath());
             }
             String absolutePath = fileObj.getAbsolutePath();
-            boolean isSigned = clearSameCertificate(absolutePath, name);
+            boolean isSigned = isSignedBySameCertificate(absolutePath, name);
+
             if (!isSigned) {
                 //get digital certificate of current user login
                 String username = WorkflowUtil.getCurrentUsername();
@@ -318,19 +320,28 @@ public class DigitalCertificateFileUpload extends FileUpload {
         }
     }
 
-    public boolean clearSameCertificate(String path, String username) throws IOException {
-        try (PdfReader pdfReader = new PdfReader(path);
-             PdfDocument pdfDocument = new PdfDocument(pdfReader)) {
-
-            SignatureUtil signatureUtil = new SignatureUtil(pdfDocument);
-
-            for (String name : signatureUtil.getSignatureNames()) {
-                if (name.equals(username)) {
-                    return true;
+    public boolean isSignedBySameCertificate(String path, String username) throws IOException {
+        if("true".equalsIgnoreCase(getPropertyString("override"))){
+            try (PdfReader pdfReader = new PdfReader(path);
+                 PdfDocument pdfDocument = new PdfDocument(pdfReader)) {
+                SignatureUtil signatureUtil = new SignatureUtil(pdfDocument);
+                for (String name : signatureUtil.getSignatureNames()) {
+                    if (name.equals(username)) {
+                        PdfAcroForm form = PdfAcroForm.getAcroForm(pdfDocument, true);
+                        form.flattenFields();
+                        return false;
+                    }
                 }
             }
+        }else{
+            return true;
         }
         return false;
+    }
+
+    public void clearCertificate(PdfDocument pdfDocument){
+        PdfAcroForm pdfAcroForm = PdfAcroForm.getAcroForm(pdfDocument, true);
+
     }
 
     @Override
