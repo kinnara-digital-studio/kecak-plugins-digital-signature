@@ -170,8 +170,7 @@ public class DigitalCertificateFileUpload extends FileUpload {
         storeToPKCS12(filename, pass, generatedKeyPair, userFullname);
     }
 
-
-    public Certificate selfSign(KeyPair keyPair, String subjectDN)
+    public Certificate selfSign(PrivateKey issuerPrivateKey, String issuerDn, PublicKey subjectPublicKey, String subjectDN)
             throws OperatorCreationException, CertificateException, IOException {
         Provider bcProvider = new BouncyCastleProvider();
         Security.addProvider(bcProvider);
@@ -179,6 +178,7 @@ public class DigitalCertificateFileUpload extends FileUpload {
         long now = System.currentTimeMillis();
         Date startDate = new Date(now);
 
+        X500Name issuerDnName = new X500Name(issuerDn);
         X500Name dnName = new X500Name(subjectDN);
 
         // Using the current timestamp as the certificate serial number
@@ -191,14 +191,13 @@ public class DigitalCertificateFileUpload extends FileUpload {
 
         Date endDate = calendar.getTime();
 
-        SubjectPublicKeyInfo subjectPublicKeyInfo = SubjectPublicKeyInfo.getInstance(keyPair
-                .getPublic().getEncoded());
+        SubjectPublicKeyInfo subjectPublicKeyInfo = SubjectPublicKeyInfo.getInstance(subjectPublicKey.getEncoded());
 
-        X509v3CertificateBuilder certificateBuilder = new X509v3CertificateBuilder(dnName,
+        X509v3CertificateBuilder certificateBuilder = new X509v3CertificateBuilder(issuerDnName,
                 certSerialNumber, startDate, endDate, dnName, subjectPublicKeyInfo);
 
         ContentSigner contentSigner = new JcaContentSignerBuilder(SIGNATURE_ALGORITHM).setProvider(
-                bcProvider).build(keyPair.getPrivate());
+                bcProvider).build(issuerPrivateKey);
 
         X509CertificateHolder certificateHolder = certificateBuilder.build(contentSigner);
 
@@ -212,7 +211,13 @@ public class DigitalCertificateFileUpload extends FileUpload {
             NoSuchAlgorithmException, CertificateException,
             OperatorCreationException {
 
-        Certificate selfSignedCertificate = selfSign(generatedKeyPair, getDn(name, getOrganizationalUnit(), getOrganization(), getLocality(), getStateOrProvince(), getCountry()));
+        // TODO
+        final PrivateKey issuerPrivateKey = null;
+        final String issuerDn = null;
+
+        final PublicKey subjectPublicKey = generatedKeyPair.getPublic();
+        final String subjectDn = getDn(name, getOrganizationalUnit(), getOrganization(), getLocality(), getStateOrProvince(), getCountry());
+        Certificate selfSignedCertificate = selfSign(issuerPrivateKey, issuerDn, subjectPublicKey, subjectDn);
 
         KeyStore pkcs12KeyStore = KeyStore.getInstance("PKCS12");
         pkcs12KeyStore.load(null, null);
