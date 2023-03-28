@@ -2,17 +2,17 @@
 	<label class='label' >Digital Signature</label>
 	<div class="form-cell" ${elementMetaData!}>
 	    <label class="label" style="position:absolute;top:10px;left:10px;">
-			${element.properties.label} 
-			<span class="form-cell-validator">${decoration}</span>
-			<#if error??> <span class="form-error-message">${error}</span></#if>
+			${element.properties.label!}
+			<span class="form-cell-validator">${decoration!}</span>
+			<#if error??> <span class="form-error-message">${error!}</span></#if>
 		</label>
 		<div style='border: 5px solid grey;height:100px;background-color:#EFF1F2;color:#C4C7CB;align:center;'>
 			<span style='position:absolute;top:10px;left:270px;font-weight:bold;font-size:70px;align:center;'>PDF</span>
 		<div>
 	</div>
 <#else>
-	<script type="text/javascript" src="${request.contextPath}/plugin/${className}/pdf.js"/></script>
-	<script type="text/javascript" src="${request.contextPath}/plugin/${className}/fabric.min.js"/></script>
+	<script type="text/javascript" src="${request.contextPath}/plugin/${className}/node_modules/pdfjs-dist/build/pdf.js"/></script>
+	<script type="text/javascript" src="${request.contextPath}/plugin/${className}/node_modules/fabric/dist/fabric.min.js"/></script>
 	<style>
 		.md-btn {
 		    background: #2916c3;

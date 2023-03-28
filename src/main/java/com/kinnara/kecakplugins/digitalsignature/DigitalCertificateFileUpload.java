@@ -50,31 +50,6 @@ public class DigitalCertificateFileUpload extends FileUpload {
     public final static String SIGNATURE_ALGORITHM = "SHA256WithRSA";
     public final static String PATH_CERTIFICATE = "wflow/app_certificate/";
     public final static String PATH_FORMUPLOADS = "wflow/app_formuploads/";
-//
-//    @Override
-//    public String renderTemplate(FormData formData, Map dataModel) {
-//        if (getLoadBinder() == null) {
-//            return super.renderTemplate(formData, dataModel);
-//        }
-//
-//        String template = "DigitalCertificate.ftl";
-//
-//        formData = FormUtil.executeLoadBinders(this, formData);
-//        FormRowSet rowSet = formData.getLoadBinderData(this);
-//
-//        Map<String, String> filePaths = Optional.ofNullable(rowSet)
-//                .map(Collection::stream)
-//                .orElseGet(Stream::empty)
-//                .map(Hashtable::entrySet)
-//                .flatMap(Collection::stream)
-//                .collect(HashMap::new, (m, e) -> m.put(String.valueOf(e.getKey()), String.valueOf(e.getValue())),
-//                        HashMap::putAll);
-//
-//        if (!filePaths.isEmpty())
-//            dataModel.put("filePaths", filePaths);
-//
-//        return FormUtil.generateElementHtml(this, formData, template, dataModel);
-//    }
 
     public FormRowSet formatData(FormData formData) {
         String name = WorkflowUtil.getCurrentUserFullName();
@@ -93,12 +68,14 @@ public class DigitalCertificateFileUpload extends FileUpload {
             }
             String absolutePath = fileObj.getAbsolutePath();
             boolean isSigned = clearSameCertificate(absolutePath, name);
-            if (!isSigned) {
+            if (isSigned) {
                 //get digital certificate of current user login
                 String username = WorkflowUtil.getCurrentUsername();
                 URL url = ResourceUtils.getURL(PATH_CERTIFICATE + username + ".pkcs12");
                 final File certFile = new File(url.getPath());
-                char[] pass = getPassword();
+                char[] pass = getPassword().toCharArray();
+
+                LogUtil.info(getClassName(), "getPassword() : [" + getPassword() + "]");
 
                 if (!certFile.exists()) {
                     URL baseUrl = ResourceUtils.getURL(PATH_CERTIFICATE);
@@ -122,14 +99,14 @@ public class DigitalCertificateFileUpload extends FileUpload {
                     while (en.hasMoreElements()) {
                         String alias = en.nextElement();
                         Key key = ks.getKey(alias, pass);
-                        if(key instanceof PrivateKey) {
+                        if (key instanceof PrivateKey) {
                             chain = ks.getCertificateChain(alias);
                             privateKey = (PrivateKey) key;
                             break;
                         }
                     }
 
-                    if(privateKey == null) {
+                    if (privateKey == null) {
                         throw new DigitalCertificateException("Private key is not found");
                     }
 
@@ -139,15 +116,18 @@ public class DigitalCertificateFileUpload extends FileUpload {
                     sign(name, absolutePath, absolutePath, chain, privateKey, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
                             getReason(formData), getOrganization(), null, null, null, 0);
 
+                    LogUtil.info(getClassName(), "Document [" + fileObj.getName() + "] has been signed by [" + username + "]");
                 }
             }
+
+            return super.formatData(formData);
         } catch (Exception e) {
             LogUtil.error(getClassName(), e, e.getMessage());
             final String parameterName = FormUtil.getElementParameterName(this);
             formData.addFileError(parameterName, e.getMessage());
         }
 
-        return super.formatData(formData);
+        return null;
     }
 
     protected String getReason(FormData formData) {
@@ -155,10 +135,10 @@ public class DigitalCertificateFileUpload extends FileUpload {
         return "Approval";
     }
 
-    public char[] getPassword() {
+    public String getPassword() {
         SetupManager sm = (SetupManager) SecurityUtil.getApplicationContext().getBean("setupManager");
         String password = sm.getSettingValue("securityKey");
-        return password.isEmpty() ? DEFAULT_PASSWORD.toCharArray() : password.toCharArray();
+        return password.isEmpty() ? DEFAULT_PASSWORD : password;
     }
 
     public void generateKey(File certFile, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException {
@@ -177,7 +157,7 @@ public class DigitalCertificateFileUpload extends FileUpload {
         Date startDate = new Date(now);
 
         X500Name issuerDnName = new X500Name(issuerDn);
-        X500Name dnName = new X500Name(subjectDN);
+        X500Name subjectDnName = new X500Name(subjectDN);
 
         // Using the current timestamp as the certificate serial number
         BigInteger certSerialNumber = new BigInteger(Long.toString(now));
@@ -192,7 +172,7 @@ public class DigitalCertificateFileUpload extends FileUpload {
         SubjectPublicKeyInfo subjectPublicKeyInfo = SubjectPublicKeyInfo.getInstance(subjectPublicKey.getEncoded());
 
         X509v3CertificateBuilder certificateBuilder = new X509v3CertificateBuilder(issuerDnName,
-                certSerialNumber, startDate, endDate, dnName, subjectPublicKeyInfo);
+                certSerialNumber, startDate, endDate, subjectDnName, subjectPublicKeyInfo);
 
         ContentSigner contentSigner = new JcaContentSignerBuilder(SIGNATURE_ALGORITHM).setProvider(
                 bcProvider).build(issuerPrivateKey);
@@ -209,12 +189,13 @@ public class DigitalCertificateFileUpload extends FileUpload {
             NoSuchAlgorithmException, CertificateException,
             OperatorCreationException {
 
-        // TODO
-        final PrivateKey issuerPrivateKey = null;
-        final String issuerDn = null;
-
         final PublicKey subjectPublicKey = generatedKeyPair.getPublic();
         final String subjectDn = getDn(name, getOrganizationalUnit(), getOrganization(), getLocality(), getStateOrProvince(), getCountry());
+
+        // TODO
+        final PrivateKey issuerPrivateKey = generatedKeyPair.getPrivate();
+        final String issuerDn = subjectDn;
+
         Certificate selfSignedCertificate = selfSign(issuerPrivateKey, issuerDn, subjectPublicKey, subjectDn);
 
         KeyStore pkcs12KeyStore = KeyStore.getInstance("PKCS12");
@@ -323,7 +304,7 @@ public class DigitalCertificateFileUpload extends FileUpload {
         }
     }
 
-    public boolean clearSameCertificate(String path, String username) throws IOException {
+    public boolean clearSameCertificate(String path, String username) {
         try (PdfReader pdfReader = new PdfReader(path);
              PdfDocument pdfDocument = new PdfDocument(pdfReader)) {
 
@@ -334,6 +315,8 @@ public class DigitalCertificateFileUpload extends FileUpload {
                     return true;
                 }
             }
+        } catch (IOException e) {
+            LogUtil.error(getClassName(), e, e.getMessage());
         }
         return false;
     }

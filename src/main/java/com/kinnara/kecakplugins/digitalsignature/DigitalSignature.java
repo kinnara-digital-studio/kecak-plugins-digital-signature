@@ -1,5 +1,6 @@
 package com.kinnara.kecakplugins.digitalsignature;
 
+import com.kinnara.kecakplugins.digitalsignature.util.Unclutter;
 import org.joget.apps.app.dao.FormDefinitionDao;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.model.FormDefinition;
@@ -15,177 +16,229 @@ import org.joget.apps.form.service.FileUtil;
 import org.joget.apps.form.service.FormService;
 import org.joget.apps.form.service.FormUtil;
 import org.joget.commons.util.LogUtil;
+import org.joget.plugin.base.PluginWebSupport;
 import org.joget.workflow.model.service.WorkflowUserManager;
+import org.joget.workflow.util.WorkflowUtil;
+import org.kecak.apps.exception.ApiException;
 import org.springframework.context.ApplicationContext;
+import org.springframework.util.ResourceUtils;
 
-import java.io.File;
-import java.io.UnsupportedEncodingException;
+import javax.servlet.ServletException;
+import javax.servlet.ServletOutputStream;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.*;
+import java.net.URL;
 import java.net.URLEncoder;
 import java.util.Map;
 
 @Deprecated
-public class DigitalSignature extends Element implements FormBuilderPaletteElement, FileDownloadSecurity {
-	@Override
-	public String renderTemplate(FormData formData, Map dataModel) {
-		String template = "digitalSignature.ftl";
+public class DigitalSignature extends Element implements PluginWebSupport, FormBuilderPaletteElement, FileDownloadSecurity, Unclutter {
+    public final static String PATH_CERTIFICATE = "wflow/app_certificate/";
 
-		String formDefId = getPropertyString("formDefId");
-		String signatureId = getPropertyString("fileField");
-		String username = getPropertyString("username");
+    @Override
+    public String renderTemplate(FormData formData, Map dataModel) {
+        String template = "digitalSignature.ftl";
 
-		String thisFormDefId = "";
-		Form form = FormUtil.findRootForm(this);
-		if (form != null) {
-			thisFormDefId = form.getPropertyString(FormUtil.PROPERTY_ID);
-		}
-		
-		String appId = "";
-		String appVersion = "";
+        String formDefId = getPropertyString("formDefId");
+        String signatureId = getPropertyString("fileField");
+        String username = getPropertyString("username");
 
-		AppDefinition appDef = AppUtil.getCurrentAppDefinition();
-		if (appDef != null) {
-			appId = appDef.getId();
-			appVersion = appDef.getVersion().toString();
-		}
+        String thisFormDefId = "";
+        Form form = FormUtil.findRootForm(this);
+        if (form != null) {
+            thisFormDefId = form.getPropertyString(FormUtil.PROPERTY_ID);
+        }
 
-		String primaryKeyValue = getPrimaryKeyValue(formData);
+        String appId = "";
+        String appVersion = "";
 
-		String value = FormUtil.getElementPropertyValue(this, formData);
-		if(value!=null) {
-			String encodedFileName = value;
-			try {
-				encodedFileName = URLEncoder.encode(value, "UTF8").replaceAll("\\+", "%20");
-			} catch (UnsupportedEncodingException ex) {
-				// ignore
-			}
-			if(encodedFileName!=null && !encodedFileName.equals("")) {
-				String fileLocation = FileUtil.getUploadPath(this, primaryKeyValue) + "/" + encodedFileName;
-				File file = new File(fileLocation);
-				if(file.exists()) {
-					String filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + thisFormDefId + "/" + primaryKeyValue + "/" + encodedFileName + ".";
-					dataModel.put("pdfFile", filePath);
-				}else {
-					String filePath;
-					try {
-						filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + thisFormDefId + "/" + primaryKeyValue + "/" + URLEncoder.encode(value,"UTF-8") + ".";
-						dataModel.put("pdfFile", filePath);
-					} catch (UnsupportedEncodingException e) {
-						LogUtil.error(this.getClassName(), e, e.getMessage());
-					}
-					
-				}
-			}else {
-				String filePath;
-				try {
-					filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + thisFormDefId + "/" + primaryKeyValue + "/" + URLEncoder.encode(value,"UTF-8") + ".";
-					dataModel.put("pdfFile", filePath);
-				} catch (UnsupportedEncodingException e) {
-					LogUtil.error(this.getClassName(), e, e.getMessage());
-				}
-				
-			}
-		}else{
-			dataModel.put("pdfFile", "");
-		}
+        AppDefinition appDef = AppUtil.getCurrentAppDefinition();
+        if (appDef != null) {
+            appId = appDef.getId();
+            appVersion = appDef.getVersion().toString();
+        }
 
-		//Ambil signature nya
-		ApplicationContext appContext = AppUtil.getApplicationContext();
-		FormDataDao formDataDao = (FormDataDao)appContext.getBean("formDataDao");
-		WorkflowUserManager wum = (WorkflowUserManager) AppUtil.getApplicationContext().getBean("workflowUserManager");
-		String currentUser = wum.getCurrentUsername();
-		
-		Form formMaster = generateForm(formDefId);
-		LogUtil.info(this.getClass().getName(), "USERNAME FIELD: "+username);
-		LogUtil.info(this.getClass().getName(), "USERNAME: "+currentUser);
-		LogUtil.info(this.getClass().getName(), "FORM: "+formMaster.getLabel());
-		String masterPK = formDataDao.findPrimaryKey(formMaster, username, currentUser);
-		LogUtil.info(this.getClass().getName(), "Primary Key: "+masterPK);
-		FormRow row = formDataDao.load(formMaster, masterPK);
-		LogUtil.info(this.getClass().getName(), row.getProperty(signatureId));
-		dataModel.put("className", getClassName());
-		try {
-			String signaturePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + formDefId + "/" + masterPK + "/" + URLEncoder.encode(row.getProperty(signatureId),"UTF-8") + ".";
-			dataModel.put("signatureFile", signaturePath);
-		} catch (UnsupportedEncodingException e) {
-			LogUtil.error(this.getClassName(), e, e.getMessage());;
-		}
-		String html = FormUtil.generateElementHtml(this, formData, template, dataModel);
-		return html;
-	}
+        String primaryKeyValue = getPrimaryKeyValue(formData);
 
-	protected Form generateForm(String formDefId) {
-		// proceed without cache
-		ApplicationContext appContext = AppUtil.getApplicationContext();
-		FormService formService = (FormService) appContext.getBean("formService");
-		FormDefinitionDao formDefinitionDao = (FormDefinitionDao)appContext.getBean("formDefinitionDao");
+        String value = FormUtil.getElementPropertyValue(this, formData);
+        if (value != null) {
+            String encodedFileName = value;
+            try {
+                encodedFileName = URLEncoder.encode(value, "UTF8").replaceAll("\\+", "%20");
+            } catch (UnsupportedEncodingException ex) {
+                // ignore
+            }
+            if (encodedFileName != null && !encodedFileName.equals("")) {
+                String fileLocation = FileUtil.getUploadPath(this, primaryKeyValue) + "/" + encodedFileName;
+                File file = new File(fileLocation);
+                if (file.exists()) {
+                    String filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + thisFormDefId + "/" + primaryKeyValue + "/" + encodedFileName + ".";
+                    dataModel.put("pdfFile", filePath);
+                } else {
+                    String filePath;
+                    try {
+                        filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + thisFormDefId + "/" + primaryKeyValue + "/" + URLEncoder.encode(value, "UTF-8") + ".";
+                        dataModel.put("pdfFile", filePath);
+                    } catch (UnsupportedEncodingException e) {
+                        LogUtil.error(this.getClassName(), e, e.getMessage());
+                    }
 
-		AppDefinition appDef = AppUtil.getCurrentAppDefinition();
+                }
+            } else {
+                String filePath;
+                try {
+                    filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + thisFormDefId + "/" + primaryKeyValue + "/" + URLEncoder.encode(value, "UTF-8") + ".";
+                    dataModel.put("pdfFile", filePath);
+                } catch (UnsupportedEncodingException e) {
+                    LogUtil.error(this.getClassName(), e, e.getMessage());
+                }
 
-		if (appDef != null && formDefId != null && !formDefId.isEmpty()) {
-			FormDefinition formDef = formDefinitionDao.loadById(formDefId, appDef);
-			if (formDef != null) {
-				String json = formDef.getJson();
-				LogUtil.info(this.getClass().getName(), "FORM JSON: "+json);
-				return (Form) formService.createElementFromJson(json);
-			}
-		}
-		return null;
-	}
+            }
+        } else {
+            dataModel.put("pdfFile", "");
+        }
+
+        //Ambil signature nya
+        ApplicationContext appContext = AppUtil.getApplicationContext();
+        FormDataDao formDataDao = (FormDataDao) appContext.getBean("formDataDao");
+        WorkflowUserManager wum = (WorkflowUserManager) AppUtil.getApplicationContext().getBean("workflowUserManager");
+        String currentUser = wum.getCurrentUsername();
+
+        Form formMaster = generateForm(formDefId);
+        LogUtil.info(this.getClass().getName(), "USERNAME FIELD: " + username);
+        LogUtil.info(this.getClass().getName(), "USERNAME: " + currentUser);
+        LogUtil.info(this.getClass().getName(), "FORM: " + formMaster.getLabel());
+        String masterPK = formDataDao.findPrimaryKey(formMaster, username, currentUser);
+        LogUtil.info(this.getClass().getName(), "Primary Key: " + masterPK);
+        FormRow row = formDataDao.load(formMaster, masterPK);
+        LogUtil.info(this.getClass().getName(), row.getProperty(signatureId));
+        dataModel.put("className", getClassName());
+        try {
+            String signaturePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + formDefId + "/" + masterPK + "/" + URLEncoder.encode(row.getProperty(signatureId), "UTF-8") + ".";
+            dataModel.put("signatureFile", signaturePath);
+        } catch (UnsupportedEncodingException e) {
+            LogUtil.error(this.getClassName(), e, e.getMessage());
+            ;
+        }
+        String html = FormUtil.generateElementHtml(this, formData, template, dataModel);
+        return html;
+    }
+
+    protected Form generateForm(String formDefId) {
+        // proceed without cache
+        ApplicationContext appContext = AppUtil.getApplicationContext();
+        FormService formService = (FormService) appContext.getBean("formService");
+        FormDefinitionDao formDefinitionDao = (FormDefinitionDao) appContext.getBean("formDefinitionDao");
+
+        AppDefinition appDef = AppUtil.getCurrentAppDefinition();
+
+        if (appDef != null && formDefId != null && !formDefId.isEmpty()) {
+            FormDefinition formDef = formDefinitionDao.loadById(formDefId, appDef);
+            if (formDef != null) {
+                String json = formDef.getJson();
+                LogUtil.info(this.getClass().getName(), "FORM JSON: " + json);
+                return (Form) formService.createElementFromJson(json);
+            }
+        }
+        return null;
+    }
 
 
-	@Override
-	public String getFormBuilderCategory() {
-		return "Kecak";
-	}
+    @Override
+    public String getFormBuilderCategory() {
+        return "Kecak";
+    }
 
-	@Override
-	public int getFormBuilderPosition() {
-		return 200;
-	}
+    @Override
+    public int getFormBuilderPosition() {
+        return 200;
+    }
 
-	@Override
-	public String getFormBuilderIcon() {
-		return "/plugin/org.joget.apps.form.lib.TextField/images/textField_icon.gif";
-	}
+    @Override
+    public String getFormBuilderIcon() {
+        return "/plugin/org.joget.apps.form.lib.TextField/images/textField_icon.gif";
+    }
 
-	@Override
-	public String getFormBuilderTemplate() {
-		return "<label class='label' style='position:absolute;top:10px;left:10px;'>Digital Signature</label><div style='border: 5px solid grey;height:100px;background-color:#EFF1F2;color:#C4C7CB;align:center;'><span style='position:absolute;top:10px;left:270px;font-weight:bold;font-size:70px;align:center;'>PDF</span><div>";
-	}
+    @Override
+    public String getFormBuilderTemplate() {
+        return "<label class='label' style='position:absolute;top:10px;left:10px;'>Digital Signature</label><div style='border: 5px solid grey;height:100px;background-color:#EFF1F2;color:#C4C7CB;align:center;'><span style='position:absolute;top:10px;left:270px;font-weight:bold;font-size:70px;align:center;'>PDF</span><div>";
+    }
 
-	@Override
-	public String getName() {
-		return "(Deprecated) Digital Signature";
-	}
+    @Override
+    public String getName() {
+        return "(Deprecated) Digital Signature";
+    }
 
-	@Override
-	public String getVersion() {
-		return getClass().getPackage().getImplementationVersion();
-	}
+    @Override
+    public String getVersion() {
+        return getClass().getPackage().getImplementationVersion();
+    }
 
-	@Override
-	public String getDescription() {
-		return getClass().getPackage().getImplementationTitle();
-	}
+    @Override
+    public String getDescription() {
+        return getClass().getPackage().getImplementationTitle();
+    }
 
-	@Override
-	public String getLabel() {
-		return this.getName();
-	}
+    @Override
+    public String getLabel() {
+        return this.getName();
+    }
 
-	@Override
-	public String getClassName() {
-		return getClass().getName();
-	}
+    @Override
+    public String getClassName() {
+        return getClass().getName();
+    }
 
-	@Override
-	public String getPropertyOptions() {
-		return AppUtil.readPluginResource(getClass().getName(), "/properties/digitalSignature.json", null, true, "/message/digitalSignature");
-	}
+    @Override
+    public String getPropertyOptions() {
+        return AppUtil.readPluginResource(getClass().getName(), "/properties/digitalSignature.json", null, true, "/message/digitalSignature");
+    }
 
-	@Override
-	public boolean isDownloadAllowed(Map requestParameters) {
-		// TODO Auto-generated method stub
-		return true;
-	}
+    @Override
+    public boolean isDownloadAllowed(Map requestParameters) {
+        return true;
+    }
+
+    @Override
+    public void webService(HttpServletRequest servletRequest, HttpServletResponse servletResponse) throws ServletException, IOException {
+        try {
+            final String action = getParameter(servletRequest, "action");
+            if ("getSignature".equals(action)) {
+                if (WorkflowUtil.isCurrentUserAnonymous()) {
+                    throw new ApiException(HttpServletResponse.SC_FORBIDDEN, "Login required");
+                }
+
+                final String username = WorkflowUtil.getCurrentUsername();
+                final URL url = ResourceUtils.getURL(PATH_CERTIFICATE + "/" + username + "/signature.png");
+                final File signatureFile = new File(url.getPath());
+
+                if(!signatureFile.exists()) {
+                    throw new ApiException(HttpServletResponse.SC_NOT_FOUND, "Signature not found");
+                }
+
+                final String filename = signatureFile.getName();
+                servletResponse.setHeader("Content-Disposition", "attachment; filename=" + filename + "; filename*=UTF-8''" + filename);
+
+                try (final ServletOutputStream outputStream = servletResponse.getOutputStream();
+                     final FileInputStream fis = new FileInputStream(signatureFile);
+                     final DataInputStream dis = new DataInputStream(fis)) {
+
+                    byte[] bbuf = new byte[65536];
+
+                    // send output
+                    int length = 0;
+                    while ((length = dis.read(bbuf)) != -1) {
+                        outputStream.write(bbuf, 0, length);
+                    }
+                    outputStream.flush();
+                }
+            } else {
+                throw new ApiException(HttpServletResponse.SC_NOT_FOUND, "Action [" + action + "] is not supported");
+            }
+        } catch (ApiException e) {
+            LogUtil.error(getClassName(), e, e.getMessage());
+            servletResponse.sendError(e.getErrorCode(), e.getMessage());
+        }
+    }
 }

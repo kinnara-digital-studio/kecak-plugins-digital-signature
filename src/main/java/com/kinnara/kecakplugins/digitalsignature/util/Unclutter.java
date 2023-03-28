@@ -3,9 +3,13 @@ package com.kinnara.kecakplugins.digitalsignature.util;
 import org.joget.commons.util.LogUtil;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.kecak.apps.exception.ApiException;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.swing.text.html.Option;
 import java.util.*;
 import java.util.function.*;
 import java.util.stream.IntStream;
@@ -434,5 +438,13 @@ public interface Unclutter {
                 }
             };
         }
+    }
+
+    default Optional<String> optParameter(HttpServletRequest request, String parameterName) {
+        return Optional.of(parameterName).map(request::getParameter);
+    }
+
+    default String getParameter(HttpServletRequest request, String parameterName) throws ApiException {
+        return optParameter(request, parameterName).orElseThrow(() -> new ApiException(HttpServletResponse.SC_BAD_REQUEST, "Parameter ["+parameterName+"] is required"));
     }
 }

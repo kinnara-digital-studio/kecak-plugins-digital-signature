@@ -1,0 +1,21 @@
+[
+  {
+    "title": "@@digital.signature.title@@",
+    "properties" : [
+      {
+        "name" : "id",
+        "label" : "@@digital.signature.id@@",
+        "type" : "textfield",
+        "required": "True",
+        "regex_validation" : "^[a-zA-Z0-9_]+$",
+        "validation_message" : "@@digital.signature.invalidId@@"
+      },
+      {
+        "name" : "label",
+        "label" : "@@digital.signature.label@@",
+        "type" : "textfield",
+        "value" : "Digital Signature"
+      }
+    ]
+  }
+]
