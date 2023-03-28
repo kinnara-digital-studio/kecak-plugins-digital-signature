@@ -16,6 +16,7 @@ import org.joget.apps.form.service.FileUtil;
 import org.joget.apps.form.service.FormService;
 import org.joget.apps.form.service.FormUtil;
 import org.joget.commons.util.LogUtil;
+import org.joget.plugin.base.PluginManager;
 import org.joget.plugin.base.PluginWebSupport;
 import org.joget.workflow.model.service.WorkflowUserManager;
 import org.joget.workflow.util.WorkflowUtil;
@@ -31,11 +32,10 @@ import java.io.*;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.Map;
+import java.util.ResourceBundle;
 
 @Deprecated
-public class DigitalSignature extends Element implements PluginWebSupport, FormBuilderPaletteElement, FileDownloadSecurity, Unclutter {
-    public final static String PATH_CERTIFICATE = "wflow/app_certificate/";
-
+public class DigitalSignature extends Element implements FormBuilderPaletteElement, FileDownloadSecurity, Unclutter {
     @Override
     public String renderTemplate(FormData formData, Map dataModel) {
         String template = "digitalSignature.ftl";
@@ -60,67 +60,18 @@ public class DigitalSignature extends Element implements PluginWebSupport, FormB
         }
 
         String primaryKeyValue = getPrimaryKeyValue(formData);
-
         String value = FormUtil.getElementPropertyValue(this, formData);
-        if (value != null) {
-            String encodedFileName = value;
-            try {
-                encodedFileName = URLEncoder.encode(value, "UTF8").replaceAll("\\+", "%20");
-            } catch (UnsupportedEncodingException ex) {
-                // ignore
-            }
-            if (encodedFileName != null && !encodedFileName.equals("")) {
-                String fileLocation = FileUtil.getUploadPath(this, primaryKeyValue) + "/" + encodedFileName;
-                File file = new File(fileLocation);
-                if (file.exists()) {
-                    String filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + thisFormDefId + "/" + primaryKeyValue + "/" + encodedFileName + ".";
-                    dataModel.put("pdfFile", filePath);
-                } else {
-                    String filePath;
-                    try {
-                        filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + thisFormDefId + "/" + primaryKeyValue + "/" + URLEncoder.encode(value, "UTF-8") + ".";
-                        dataModel.put("pdfFile", filePath);
-                    } catch (UnsupportedEncodingException e) {
-                        LogUtil.error(this.getClassName(), e, e.getMessage());
-                    }
-
-                }
-            } else {
-                String filePath;
-                try {
-                    filePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + thisFormDefId + "/" + primaryKeyValue + "/" + URLEncoder.encode(value, "UTF-8") + ".";
-                    dataModel.put("pdfFile", filePath);
-                } catch (UnsupportedEncodingException e) {
-                    LogUtil.error(this.getClassName(), e, e.getMessage());
-                }
-
-            }
-        } else {
-            dataModel.put("pdfFile", "");
-        }
-
-        //Ambil signature nya
-        ApplicationContext appContext = AppUtil.getApplicationContext();
-        FormDataDao formDataDao = (FormDataDao) appContext.getBean("formDataDao");
-        WorkflowUserManager wum = (WorkflowUserManager) AppUtil.getApplicationContext().getBean("workflowUserManager");
-        String currentUser = wum.getCurrentUsername();
-
-        Form formMaster = generateForm(formDefId);
-        LogUtil.info(this.getClass().getName(), "USERNAME FIELD: " + username);
-        LogUtil.info(this.getClass().getName(), "USERNAME: " + currentUser);
-        LogUtil.info(this.getClass().getName(), "FORM: " + formMaster.getLabel());
-        String masterPK = formDataDao.findPrimaryKey(formMaster, username, currentUser);
-        LogUtil.info(this.getClass().getName(), "Primary Key: " + masterPK);
-        FormRow row = formDataDao.load(formMaster, masterPK);
-        LogUtil.info(this.getClass().getName(), row.getProperty(signatureId));
-        dataModel.put("className", getClassName());
+        String encodedFileName = value;
         try {
-            String signaturePath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + formDefId + "/" + masterPK + "/" + URLEncoder.encode(row.getProperty(signatureId), "UTF-8") + ".";
-            dataModel.put("signatureFile", signaturePath);
-        } catch (UnsupportedEncodingException e) {
-            LogUtil.error(this.getClassName(), e, e.getMessage());
-            ;
-        }
+            encodedFileName = URLEncoder.encode(value, "UTF8").replaceAll("\\+", "%20");
+        } catch (UnsupportedEncodingException ignored) {}
+
+        final String pdfPath = "/web/client/app/" + appId + "/" + appVersion + "/form/download/" + formDefId + "/" + primaryKeyValue + "/" + encodedFileName + ".";
+        dataModel.put("pdfFile", pdfPath);
+
+        dataModel.put("className", getClassName());
+        String signaturePath = "/web/json/plugin/" + GetSignatureApi.class.getName() + "/service";
+        dataModel.put("signatureFile", signaturePath);
         String html = FormUtil.generateElementHtml(this, formData, template, dataModel);
         return html;
     }
@@ -172,7 +123,9 @@ public class DigitalSignature extends Element implements PluginWebSupport, FormB
 
     @Override
     public String getVersion() {
-        return getClass().getPackage().getImplementationVersion();
+        PluginManager pluginManager = (PluginManager) AppUtil.getApplicationContext().getBean("pluginManager");
+        ResourceBundle resourceBundle = pluginManager.getPluginMessageBundle(getClassName(), "/message/BuildNumber");
+        return resourceBundle.getString("buildNumber");
     }
 
     @Override
@@ -200,45 +153,5 @@ public class DigitalSignature extends Element implements PluginWebSupport, FormB
         return true;
     }
 
-    @Override
-    public void webService(HttpServletRequest servletRequest, HttpServletResponse servletResponse) throws ServletException, IOException {
-        try {
-            final String action = getParameter(servletRequest, "action");
-            if ("getSignature".equals(action)) {
-                if (WorkflowUtil.isCurrentUserAnonymous()) {
-                    throw new ApiException(HttpServletResponse.SC_FORBIDDEN, "Login required");
-                }
 
-                final String username = WorkflowUtil.getCurrentUsername();
-                final URL url = ResourceUtils.getURL(PATH_CERTIFICATE + "/" + username + "/signature.png");
-                final File signatureFile = new File(url.getPath());
-
-                if(!signatureFile.exists()) {
-                    throw new ApiException(HttpServletResponse.SC_NOT_FOUND, "Signature not found");
-                }
-
-                final String filename = signatureFile.getName();
-                servletResponse.setHeader("Content-Disposition", "attachment; filename=" + filename + "; filename*=UTF-8''" + filename);
-
-                try (final ServletOutputStream outputStream = servletResponse.getOutputStream();
-                     final FileInputStream fis = new FileInputStream(signatureFile);
-                     final DataInputStream dis = new DataInputStream(fis)) {
-
-                    byte[] bbuf = new byte[65536];
-
-                    // send output
-                    int length = 0;
-                    while ((length = dis.read(bbuf)) != -1) {
-                        outputStream.write(bbuf, 0, length);
-                    }
-                    outputStream.flush();
-                }
-            } else {
-                throw new ApiException(HttpServletResponse.SC_NOT_FOUND, "Action [" + action + "] is not supported");
-            }
-        } catch (ApiException e) {
-            LogUtil.error(getClassName(), e, e.getMessage());
-            servletResponse.sendError(e.getErrorCode(), e.getMessage());
-        }
-    }
 }

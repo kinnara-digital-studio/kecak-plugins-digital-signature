@@ -24,27 +24,6 @@
       {
         label : '@@digital.signature.dataSource@@',
         type : 'header'
-      },
-      {
-        name : 'formDefId',
-        label : '@@digital.signature.formDefId@@',
-        type : 'selectbox',
-        required : 'true',
-        options_ajax : '[CONTEXT_PATH]/web/json/console/app[APP_PATH]/forms/options'
-      },
-      {
-        name : 'fileField',
-        description : '@@digital.signature.filefield.desc@@',
-        label : '@@digital.signature.filefield.value@@',
-        required : 'True',
-        type : 'textfield'
-      },
-      {
-        name : 'username',
-        description : '@@digital.signature.username.desc@@',
-        label : '@@digital.signature.username.value@@',
-        required : 'True',
-        type : 'textfield'
       }
     ]
   }

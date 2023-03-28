@@ -90,8 +90,8 @@
 		$(document).ready(function(){
 			var url = "${request.contextPath}${pdfFile!?html}";
 			
-			pdfjsLib.GlobalWorkerOptions.workerSrc = '${request.contextPath}/plugin/${className}/pdf.worker.js';
-			
+            pdfjsLib.GlobalWorkerOptions.workerSrc = "${request.contextPath}/plugin/${className}/node_modules/pdfjs-dist/build/pdf.worker.js";
+
 			var pdfDoc = null,
 			    pageNum = 1,
 			    pageRendering = false,
@@ -192,9 +192,7 @@
 					// Initial/first page rendering
 					renderPage(pageNum);
             })
-			.catch(e => {
-			    console.log(e);
-			});
+			.catch(console.error);
 		});
 	
 	</script>
