@@ -220,16 +220,24 @@ public class DigitalCertificateFileUpload extends FileUpload {
 
         try (InputStream is = Files.newInputStream(Paths.get(PATH_CERTIFICATE + ROOT_CERTIFICATE));
              OutputStream os = Files.newOutputStream(Paths.get(filename))) {
-            KeyStore ks = KeyStore.getInstance(KEYSTORE_TYPE);
-            ks.load(is, password);
-            String alias = getAlias(ks, password);
-            X509Certificate cert = (X509Certificate) ks.getCertificate(alias);
-            Certificate[] chain = ks.getCertificateChain(alias);
 
-            final PrivateKey issuerPrivateKey = (PrivateKey) ks.getKey(alias, password);
-            final X500Name issuerDn = new JcaX509CertificateHolder(cert).getSubject();
             final PublicKey subjectPublicKey = generatedKeyPair.getPublic();
             final String subjectDn = getDn(name, getOrganizationalUnit(), getOrganization(), getLocality(), getStateOrProvince(), getCountry());
+            PrivateKey issuerPrivateKey = generatedKeyPair.getPrivate();
+            X500Name issuerDn = new X500Name(subjectDn);
+            Certificate root = null;
+
+            if(is.available() > 0){
+                KeyStore ks = KeyStore.getInstance(KEYSTORE_TYPE);
+                ks.load(is, password);
+                String alias = getAlias(ks, password);
+                X509Certificate cert = (X509Certificate) ks.getCertificate(alias);
+                Certificate[] chain = ks.getCertificateChain(alias);
+
+                root = chain[0];
+                issuerPrivateKey = (PrivateKey) ks.getKey(alias, password);
+                issuerDn = new JcaX509CertificateHolder(cert).getSubject();
+            }
 
             Certificate certificate = certificateSign(issuerPrivateKey, issuerDn, subjectPublicKey, subjectDn);
 
@@ -237,7 +245,7 @@ public class DigitalCertificateFileUpload extends FileUpload {
             pkcs12KeyStore.load(null, null);
 
             KeyStore.Entry entry = new KeyStore.PrivateKeyEntry(generatedKeyPair.getPrivate(),
-                    new Certificate[]{certificate, chain[0]});
+                    new Certificate[]{certificate, root});
 
             KeyStore.ProtectionParameter param = new KeyStore.PasswordProtection(password);
             pkcs12KeyStore.setEntry(name, entry, param);
