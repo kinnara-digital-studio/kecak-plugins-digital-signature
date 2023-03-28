@@ -31,6 +31,14 @@
         "label": "@@digitalCertificate.country@@",
         "description": "@@digitalCertificate.country.desc@@",
         "type": "textfield"
+      },
+      {
+        "name": "override",
+        "label": "@@digitalCertificate.override@@",
+        "description": "@@digitalCertificate.override.desc@@",
+        "type": "checkbox",
+        "value" : "true",
+        "options" : [{ "value" : "true", "label" : ""}]
       }
     ]
   }
