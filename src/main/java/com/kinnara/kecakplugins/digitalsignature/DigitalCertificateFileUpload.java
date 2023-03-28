@@ -55,7 +55,7 @@ public class DigitalCertificateFileUpload extends FileUpload {
     public final static String SIGNATURE_ALGORITHM = "SHA256WithRSA";
     public final static String PATH_CERTIFICATE = "wflow/app_certificate/";
     public final static String PATH_FORMUPLOADS = "wflow/app_formuploads/";
-    public final static String ROOT_CERTIFICATE = "admin.pkcs12";
+    public final static String ROOT_CERTIFICATE = "root/admin.pkcs12";
     public final static String KEYSTORE_TYPE = "pkcs12";
 //
 //    @Override
@@ -104,12 +104,12 @@ public class DigitalCertificateFileUpload extends FileUpload {
             if (!signed) {
                 //get digital certificate of current user login
                 String username = WorkflowUtil.getCurrentUsername();
-                URL url = ResourceUtils.getURL(PATH_CERTIFICATE + username + "." + KEYSTORE_TYPE);
+                URL url = ResourceUtils.getURL(PATH_CERTIFICATE + "/" + username + "/certificate." + KEYSTORE_TYPE);
                 final File certFile = new File(url.getPath());
                 char[] pass = getPassword();
 
                 if (!certFile.exists()) {
-                    URL baseUrl = ResourceUtils.getURL(PATH_CERTIFICATE);
+                    URL baseUrl = ResourceUtils.getURL(PATH_CERTIFICATE + "/" + username);
                     File folder = new File(baseUrl.getPath());
                     if (!folder.exists()) {
                         folder.mkdirs();
