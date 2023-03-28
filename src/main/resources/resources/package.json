@@ -1,0 +1,10 @@
+{
+  "name": "kecak-plugins-digital-signature",
+  "version": "1.0.0",
+  "author": "kinnarastudio.com",
+  "license": "ISC",
+  "dependencies": {
+    "pdfjs-dist": "3.4.120",
+    "fabric":"5.3.0"
+  }
+}

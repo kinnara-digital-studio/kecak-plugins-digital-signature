@@ -57,31 +57,6 @@ public class DigitalCertificateFileUpload extends FileUpload {
     public final static String PATH_FORMUPLOADS = "wflow/app_formuploads/";
     public final static String ROOT_CERTIFICATE = "root/admin.pkcs12";
     public final static String KEYSTORE_TYPE = "pkcs12";
-//
-//    @Override
-//    public String renderTemplate(FormData formData, Map dataModel) {
-//        if (getLoadBinder() == null) {
-//            return super.renderTemplate(formData, dataModel);
-//        }
-//
-//        String template = "DigitalCertificate.ftl";
-//
-//        formData = FormUtil.executeLoadBinders(this, formData);
-//        FormRowSet rowSet = formData.getLoadBinderData(this);
-//
-//        Map<String, String> filePaths = Optional.ofNullable(rowSet)
-//                .map(Collection::stream)
-//                .orElseGet(Stream::empty)
-//                .map(Hashtable::entrySet)
-//                .flatMap(Collection::stream)
-//                .collect(HashMap::new, (m, e) -> m.put(String.valueOf(e.getKey()), String.valueOf(e.getValue())),
-//                        HashMap::putAll);
-//
-//        if (!filePaths.isEmpty())
-//            dataModel.put("filePaths", filePaths);
-//
-//        return FormUtil.generateElementHtml(this, formData, template, dataModel);
-//    }
 
     public FormRowSet formatData(FormData formData) {
         String name = WorkflowUtil.getCurrentUserFullName();
@@ -127,7 +102,7 @@ public class DigitalCertificateFileUpload extends FileUpload {
                     Certificate[] chain = ks.getCertificateChain(alias);
                     PrivateKey privateKey = (PrivateKey) ks.getKey(alias, pass);
 
-                    if(privateKey == null) {
+                    if (privateKey == null) {
                         throw new DigitalCertificateException("Private key is not found");
                     }
 
@@ -137,15 +112,18 @@ public class DigitalCertificateFileUpload extends FileUpload {
                     sign(name, absolutePath, absolutePath, chain, privateKey, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
                             getReason(formData), getOrganization(), null, null, null, 0);
 
+                    LogUtil.info(getClassName(), "Document [" + fileObj.getName() + "] has been signed by [" + username + "]");
                 }
             }
+
+            return super.formatData(formData);
         } catch (Exception e) {
             LogUtil.error(getClassName(), e, e.getMessage());
             final String parameterName = FormUtil.getElementParameterName(this);
             formData.addFileError(parameterName, e.getMessage());
         }
 
-        return super.formatData(formData);
+        return null;
     }
 
     protected String getAlias(KeyStore ks, char[] pass) throws KeyStoreException, UnrecoverableKeyException, NoSuchAlgorithmException {
@@ -170,7 +148,7 @@ public class DigitalCertificateFileUpload extends FileUpload {
     public char[] getPassword() {
         SetupManager sm =  (SetupManager) SecurityUtil.getApplicationContext().getBean("setupManager");
         String password = sm.getSettingValue("securityKey");
-        return password.isEmpty() ? DEFAULT_PASSWORD.toCharArray() : password.toCharArray();
+        return (password.isEmpty() ? DEFAULT_PASSWORD : password).toCharArray();
     }
 
     public void generateKey(File certFile, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException {
