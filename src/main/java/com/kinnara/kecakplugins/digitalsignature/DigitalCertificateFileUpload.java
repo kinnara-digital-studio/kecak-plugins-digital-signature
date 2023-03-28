@@ -31,6 +31,7 @@ import org.joget.directory.model.Organization;
 import org.joget.directory.model.User;
 import org.joget.directory.model.service.ExtDirectoryManager;
 import org.joget.plugin.base.PluginManager;
+import org.joget.workflow.model.service.WorkflowManager;
 import org.joget.workflow.util.WorkflowUtil;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -55,7 +56,7 @@ public class DigitalCertificateFileUpload extends FileUpload {
     public final static String SIGNATURE_ALGORITHM = "SHA256WithRSA";
     public final static String PATH_CERTIFICATE = "wflow/app_certificate/";
     public final static String PATH_FORMUPLOADS = "wflow/app_formuploads/";
-    public final static String ROOT_CERTIFICATE = "root/admin.pkcs12";
+    public final static String ROOT_CERTIFICATE = "admin.pkcs12";
     public final static String KEYSTORE_TYPE = "pkcs12";
 
     public FormRowSet formatData(FormData formData) {
@@ -79,7 +80,7 @@ public class DigitalCertificateFileUpload extends FileUpload {
             if (!signed) {
                 //get digital certificate of current user login
                 String username = WorkflowUtil.getCurrentUsername();
-                URL url = ResourceUtils.getURL(PATH_CERTIFICATE + "/" + username + "/certificate." + KEYSTORE_TYPE);
+                URL url = ResourceUtils.getURL(PATH_CERTIFICATE + "/" + username + "/"+username+"Certificate." + KEYSTORE_TYPE);
                 final File certFile = new File(url.getPath());
                 char[] pass = getPassword();
 
@@ -122,7 +123,7 @@ public class DigitalCertificateFileUpload extends FileUpload {
             final String parameterName = FormUtil.getElementParameterName(this);
             formData.addFileError(parameterName, e.getMessage());
         }
-
+        
         return null;
     }
 
@@ -141,8 +142,8 @@ public class DigitalCertificateFileUpload extends FileUpload {
 
 
     protected String getReason(FormData formData) {
-        // TODO: use Activity Name
-        return "Approval";
+        WorkflowManager wm = (WorkflowManager) WorkflowUtil.getApplicationContext().getBean("workflowManager");
+        return wm.getActivityById(formData.getActivityId()).getName();
     }
 
     public char[] getPassword() {
@@ -196,7 +197,7 @@ public class DigitalCertificateFileUpload extends FileUpload {
             String filename, char[] password,
             KeyPair generatedKeyPair, String name){
 
-        try (InputStream is = Files.newInputStream(Paths.get(PATH_CERTIFICATE + ROOT_CERTIFICATE));
+        try (InputStream is = Files.newInputStream(Paths.get(PATH_CERTIFICATE + "root/" + ROOT_CERTIFICATE));
              OutputStream os = Files.newOutputStream(Paths.get(filename))) {
 
             final PublicKey subjectPublicKey = generatedKeyPair.getPublic();
