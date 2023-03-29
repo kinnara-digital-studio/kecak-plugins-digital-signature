@@ -123,7 +123,7 @@ public class DigitalCertificateFileUpload extends FileUpload {
             final String parameterName = FormUtil.getElementParameterName(this);
             formData.addFileError(parameterName, e.getMessage());
         }
-        
+
         return null;
     }
 
