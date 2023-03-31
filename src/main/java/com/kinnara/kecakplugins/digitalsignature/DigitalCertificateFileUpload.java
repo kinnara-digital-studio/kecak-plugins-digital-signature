@@ -34,6 +34,7 @@ import java.nio.file.Paths;
 import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
+import java.text.ParseException;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -64,7 +65,10 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
             if (!signed) {
                 //get digital certificate of current user login
                 String username = WorkflowUtil.getCurrentUsername();
-                URL url = ResourceUtils.getURL(PATH_CERTIFICATE + "/" + username + "/"+username+"Certificate." + KEYSTORE_TYPE);
+
+                String latestCertificate = getLatestCertificate(PATH_CERTIFICATE + "/" + username, "certificate." + KEYSTORE_TYPE);
+                LogUtil.info(getClassName(), "latest certificate : " + latestCertificate);
+                URL url = ResourceUtils.getURL(PATH_CERTIFICATE + "/" + username + "/"+latestCertificate);
                 final File certFile = new File(url.getPath());
                 char[] pass = getPassword();
 
@@ -74,7 +78,8 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
                     if (!folder.exists()) {
                         folder.mkdirs();
                     }
-                    generateKey(certFile, pass, name);
+                    final String pathCertificate = getPathCertificateName(PATH_CERTIFICATE + "/" + username, "certificate." + KEYSTORE_TYPE);
+                    generateKey(pathCertificate, pass, name);
                 }
 
                 String path = certFile.getAbsolutePath();
@@ -115,12 +120,10 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
         return wm.getActivityById(formData.getActivityId()).getName();
     }
 
-    public void generateKey(File certFile, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException {
+    public void generateKey(String pathName, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException {
         KeyPair generatedKeyPair = generateKeyPair();
-
-        String filename = certFile.getAbsolutePath();
         String subjectDn = getDn(userFullname, getOrganizationalUnit(), getOrganization(), getLocality(), getStateOrProvince(), getCountry());
-        generatePKCS12(filename, pass, generatedKeyPair, subjectDn);
+        generatePKCS12(pathName, pass, generatedKeyPair, subjectDn);
     }
 
     protected String getStateOrProvince() {

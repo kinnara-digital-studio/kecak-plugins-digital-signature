@@ -1,5 +1,6 @@
 package com.kinnara.kecakplugins.digitalsignature.util;
 
+import com.mysql.cj.log.Log;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.cert.X509CertificateHolder;
@@ -13,22 +14,27 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.joget.commons.util.LogUtil;
 import org.joget.commons.util.SecurityUtil;
 import org.joget.commons.util.SetupManager;
+import org.springframework.util.ResourceUtils;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.math.BigInteger;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Enumeration;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.util.*;
 
 public interface PKCS12Utils {
-    String PATH_ROOT = "app_certificate/root";
+    String PATH_ROOT = "wflow/app_certificate/root";
     String ROOT_CERTIFICATE = "root.pkcs12";
     String DEFAULT_PASSWORD = "SuperSecurePasswordNoOneCanBreak";
     String KEYSTORE_TYPE = "pkcs12";
@@ -41,13 +47,21 @@ public interface PKCS12Utils {
 
             KeyStore pkcs12KeyStore = KeyStore.getInstance(KEYSTORE_TYPE);
             pkcs12KeyStore.load(null, null);
+            KeyStore.Entry entry = null;
+            if(root == null){
+                entry = new KeyStore.PrivateKeyEntry(privateKey,
+                        new Certificate[]{certificate});
+            }else{
+                entry = new KeyStore.PrivateKeyEntry(privateKey,
+                        new Certificate[]{certificate, root});
+            }
 
-            KeyStore.Entry entry = new KeyStore.PrivateKeyEntry(privateKey,
-                    new Certificate[]{certificate, root});
-
+            LogUtil.info(getClass().getName(), "entry : " + entry);
             KeyStore.ProtectionParameter param = new KeyStore.PasswordProtection(password);
             pkcs12KeyStore.setEntry("Kecak", entry, param);
             pkcs12KeyStore.store(os, password);
+            LogUtil.info(getClass().getName(), "keystorepkcs12 alias : " + pkcs12KeyStore.getCertificateAlias(certificate));
+            LogUtil.info(getClass().getName(), "Save pkcs12 file to : " + path);
         } catch (Exception e){
             LogUtil.error(getClass().getName(), e, e.getMessage());
         }
@@ -55,9 +69,10 @@ public interface PKCS12Utils {
 
     default void generatePKCS12(
             String path, char[] password,
-            KeyPair generatedKeyPair, String subjectDn){
-
-        try (InputStream is = Files.newInputStream(Paths.get(PATH_ROOT + ROOT_CERTIFICATE))) {
+            KeyPair generatedKeyPair, String subjectDn) throws ParseException {
+        String latestFile = getLatestCertificate(PATH_ROOT, ROOT_CERTIFICATE);
+        LogUtil.info(getClass().getName(), "latest file : " + latestFile);
+        try (InputStream is = Files.newInputStream(Paths.get(PATH_ROOT + "/" + latestFile))) {
 
             final PublicKey subjectPublicKey = generatedKeyPair.getPublic();
             PrivateKey issuerPrivateKey = generatedKeyPair.getPrivate();
@@ -135,5 +150,33 @@ public interface PKCS12Utils {
         SetupManager sm =  (SetupManager) SecurityUtil.getApplicationContext().getBean("setupManager");
         String password = sm.getSettingValue("securityKey");
         return (password.isEmpty() ? DEFAULT_PASSWORD : password).toCharArray();
+    }
+
+    default String getPathCertificateName(String path, String filename) throws FileNotFoundException {
+        String timeStamp = new SimpleDateFormat("yyyyMMddHHmmss").format(new java.util.Date());
+        URL url = ResourceUtils.getURL(path + "/" + timeStamp + "_" + filename);
+        File certFile = new File(url.getPath());
+
+        return certFile.getAbsolutePath();
+    }
+
+    default String getLatestCertificate(String pathFolder, String filename) throws ParseException {
+        File folder = new File(pathFolder);
+        File[] listOfFiles = folder.listFiles();
+        List<Date> dateList = new ArrayList<>();
+        String latestDate = "";
+
+        for (int i = 0; i < listOfFiles.length; i++) {
+            //get date
+            String[] temp = listOfFiles[i].getName().split("_");
+            Date date = new SimpleDateFormat("yyyyMMddHHmmss").parse(temp[0]);
+            dateList.add(date);
+        }
+        if(!dateList.isEmpty()){
+            Date latest = Collections.max(dateList);
+            latestDate = new SimpleDateFormat("yyyyMMddHHmmss").format(latest) + "_";
+        }
+
+        return latestDate + filename;
     }
 }
