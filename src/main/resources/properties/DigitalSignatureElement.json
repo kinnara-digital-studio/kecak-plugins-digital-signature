@@ -19,10 +19,10 @@
     ]
   },
   {
-    "title": "@@digital.signature.advancedOptions@@",
+    "title": "@@digital.signature.stampSettings@@",
     "properties": [
       {
-        "label" : "@@digital.signature.dataSource@@",
+        "label" : "@@digital.signature.stamp@@",
         "type" : "header"
       },
       {
