@@ -13,6 +13,8 @@ import org.joget.apps.form.service.FileUtil;
 import org.joget.apps.form.service.FormUtil;
 import org.joget.commons.util.LogUtil;
 import org.joget.plugin.base.PluginManager;
+import org.joget.workflow.model.WorkflowAssignment;
+import org.joget.workflow.model.service.WorkflowManager;
 
 import java.io.*;
 import java.net.URLEncoder;
@@ -20,6 +22,9 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+/**
+ * Display PDF content
+ */
 public class DigitalSignatureElement extends Element implements FormBuilderPaletteElement, FileDownloadSecurity, Unclutter, PdfUtil {
     @Override
     public String renderTemplate(FormData formData, Map dataModel) {
@@ -82,7 +87,7 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
                 stampPdf(pdfFile, signatureFile, page, left, top, scaleX, scaleY, Math.toRadians(0));
             } else {
                 try (final ByteArrayOutputStream os = new ByteArrayOutputStream()) {
-                    writeQrCodeToStream("myContent", os);
+                    writeQrCodeToStream(getQrContent(formData), os);
 
                     final byte[] qrCode = os.toByteArray();
                     stampPdf(pdfFile, qrCode, page, left, top, scaleX, scaleY, Math.toRadians(0));
@@ -94,6 +99,12 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
 
         // do not store anything in database
         return null;
+    }
+
+    protected String getQrContent(FormData formData) {
+        WorkflowManager workflowManager = (WorkflowManager) AppUtil.getApplicationContext().getBean("workflowManager");
+        final WorkflowAssignment assignment = workflowManager.getAssignment(formData.getActivityId());
+        return AppUtil.processHashVariable(getPropertyString("qrContent"), assignment, null, null);
     }
 
     protected boolean isSignature() {
@@ -131,7 +142,7 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
 
     @Override
     public String getFormBuilderCategory() {
-        return "Kecak";
+        return "Digital Signature";
     }
 
     @Override
@@ -146,12 +157,12 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
 
     @Override
     public String getFormBuilderTemplate() {
-        return "<label class='label' style='position:absolute;top:10px;left:10px;'>Digital Signature</label><div style='border: 5px solid grey;height:100px;background-color:#EFF1F2;color:#C4C7CB;align:center;'><span style='position:absolute;top:10px;left:270px;font-weight:bold;font-size:70px;align:center;'>PDF</span><div>";
+        return "<label class='label' style='position:absolute;top:10px;left:10px;'>" + getName() + "</label><div style='border: 5px solid grey;height:100px;background-color:#EFF1F2;color:#C4C7CB;align:center;'><span style='position:absolute;top:10px;left:270px;font-weight:bold;font-size:70px;align:center;'>PDF</span><div>";
     }
 
     @Override
     public String getName() {
-        return "Digital Signature";
+        return "PDF Viewer";
     }
 
     @Override
@@ -168,7 +179,7 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
 
     @Override
     public String getLabel() {
-        return this.getName();
+        return getName();
     }
 
     @Override
@@ -178,7 +189,7 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
 
     @Override
     public String getPropertyOptions() {
-        return AppUtil.readPluginResource(getClass().getName(), "/properties/DigitalSignatureElement.json", null, true, "/message/digitalSignature");
+        return AppUtil.readPluginResource(getClass().getName(), "/properties/DigitalSignatureElement.json", null, true, "/message/DigitalSignature");
     }
 
     @Override

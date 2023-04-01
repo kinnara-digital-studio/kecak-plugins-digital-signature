@@ -40,8 +40,9 @@ public class GetQrCodeApi extends ExtDefaultPlugin implements PluginWebSupport, 
         try {
             final String content = getParameter(httpServletRequest, "content");
             httpServletResponse.setContentType("image/png");
-            final OutputStream outputStream = httpServletResponse.getOutputStream();
-            writeQrCodeToStream(content, outputStream);
+
+            final OutputStream os = httpServletResponse.getOutputStream();
+            writeQrCodeToStream(content, os);
         } catch (ApiException e) {
             LogUtil.error(getClass().getName(), e, e.getMessage());
             httpServletResponse.sendError(e.getErrorCode(), e.getMessage());

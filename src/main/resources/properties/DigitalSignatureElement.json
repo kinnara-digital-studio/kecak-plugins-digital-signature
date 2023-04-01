@@ -27,19 +27,27 @@
       },
       {
         "name": "stampType",
-        "label": "Stamp Type",
+        "label": "@@digital.signature.stampType@@",
         "type": "radio",
         "value": "signature",
         "options": [
           {
             "value": "signature",
-            "label": "Signature"
+            "label": "@@digital.signature.stampType.signature@@"
           },
           {
             "value": "qrCode",
-            "label": "QR Code"
+            "label": "@@digital.signature.stampType.qrCode@@"
           }
         ]
+      },
+      {
+        "name": "qrContent",
+        "label": "@@digital.signature.qrContent@@",
+        "type": "codeeditor",
+        "required": "true",
+        "control_field": "stampType",
+        "control_value": "qrCode"
       }
     ]
   }
