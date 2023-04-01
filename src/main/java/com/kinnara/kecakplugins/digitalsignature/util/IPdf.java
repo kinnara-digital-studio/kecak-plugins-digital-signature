@@ -1,5 +1,11 @@
 package com.kinnara.kecakplugins.digitalsignature.util;
 
+import com.itextpdf.io.image.ImageData;
+import com.itextpdf.io.image.ImageDataFactory;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Image;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -18,17 +24,14 @@ import org.springframework.web.client.RestClientException;
 
 import javax.annotation.Nonnull;
 import javax.net.ssl.SSLContext;
-import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.Optional;
 
-public interface PdfUtils {
+public interface IPdf {
     boolean getHtmlEmbed(WorkflowAssignment assignment);
 
     String getPdfUrl(WorkflowAssignment assignment);
@@ -130,4 +133,5 @@ public interface PdfUtils {
             return "data:application/pdf;base64, " + base64Encoded;
         }
     }
+
 }

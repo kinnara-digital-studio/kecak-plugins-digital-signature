@@ -1,5 +1,6 @@
-package com.kinnara.kecakplugins.digitalsignature;
+package com.kinnara.kecakplugins.digitalsignature.webapi;
 
+import com.kinnara.kecakplugins.digitalsignature.util.PdfUtil;
 import com.kinnara.kecakplugins.digitalsignature.util.Unclutter;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.commons.util.LogUtil;
@@ -8,21 +9,15 @@ import org.joget.plugin.base.PluginManager;
 import org.joget.plugin.base.PluginWebSupport;
 import org.joget.workflow.util.WorkflowUtil;
 import org.kecak.apps.exception.ApiException;
-import org.springframework.util.ResourceUtils;
 
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.net.URL;
+import java.io.*;
 import java.util.ResourceBundle;
 
-public class GetSignatureApi extends ExtDefaultPlugin implements PluginWebSupport, Unclutter {
-    public final static String PATH_CERTIFICATE = "wflow/app_certificate/";
+public class GetSignatureApi extends ExtDefaultPlugin implements PluginWebSupport, Unclutter, PdfUtil {
 
     @Override
     public String getName() {
@@ -47,10 +42,7 @@ public class GetSignatureApi extends ExtDefaultPlugin implements PluginWebSuppor
                 throw new ApiException(HttpServletResponse.SC_FORBIDDEN, "Login required");
             }
 
-            final String username = WorkflowUtil.getCurrentUsername();
-            final URL url = ResourceUtils.getURL(PATH_CERTIFICATE + "/" + username + "/signature.png");
-            final File signatureFile = new File(url.getPath());
-
+            final File signatureFile = getSignature();
             if(!signatureFile.exists()) {
                 throw new ApiException(HttpServletResponse.SC_NOT_FOUND, "Signature not found");
             }
@@ -72,6 +64,9 @@ public class GetSignatureApi extends ExtDefaultPlugin implements PluginWebSuppor
         } catch (ApiException e) {
             LogUtil.error(getClass().getName(), e, e.getMessage());
             servletResponse.sendError(e.getErrorCode(), e.getMessage());
+        } catch (FileNotFoundException e) {
+            LogUtil.error(getClass().getName(), e, e.getMessage());
+            servletResponse.sendError(HttpServletResponse.SC_NOT_FOUND, e.getMessage());
         }
     }
 }

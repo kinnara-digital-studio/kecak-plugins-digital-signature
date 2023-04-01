@@ -296,7 +296,7 @@ public class DigitalCertificateFileUpload extends FileUpload {
              PdfWriter writer = new PdfWriter(tempFilePath);
              PdfDocument document = new PdfDocument(reader, writer)) {
 
-            LogUtil.info(getClassName(), "Creating temp file");
+            LogUtil.info(getClass().getName(), "Creating temp file ["+tempFilePath+"]");
         }
 
         try (PdfReader reader = new PdfReader(tempFilePath);

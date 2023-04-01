@@ -17,5 +17,30 @@
         "value" : "Digital Signature"
       }
     ]
+  },
+  {
+    "title": "@@digital.signature.advancedOptions@@",
+    "properties": [
+      {
+        "label" : "@@digital.signature.dataSource@@",
+        "type" : "header"
+      },
+      {
+        "name": "stampType",
+        "label": "Stamp Type",
+        "type": "radio",
+        "value": "signature",
+        "options": [
+          {
+            "value": "signature",
+            "label": "Signature"
+          },
+          {
+            "value": "qrCode",
+            "label": "QR Code"
+          }
+        ]
+      }
+    ]
   }
 ]
