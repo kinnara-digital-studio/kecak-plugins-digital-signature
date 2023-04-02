@@ -32,6 +32,10 @@
         "value": "signature",
         "options": [
           {
+            "value": "",
+            "label": "@@digital.signature.stampType.none@@"
+          },
+          {
             "value": "signature",
             "label": "@@digital.signature.stampType.signature@@"
           },

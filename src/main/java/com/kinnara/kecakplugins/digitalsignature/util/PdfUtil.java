@@ -109,6 +109,13 @@ public interface PdfUtil {
         }
     }
 
+    /**
+     *
+     * @param content       Input : QR content
+     * @param outputStream  Output : write to output stream
+     * @throws WriterException
+     * @throws IOException
+     */
     default void writeQrCodeToStream(@Nonnull String content, @Nonnull final OutputStream outputStream) throws WriterException, IOException {
         final int width = 100;
         final int height = 100;

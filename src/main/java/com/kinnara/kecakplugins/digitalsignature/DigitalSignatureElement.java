@@ -55,9 +55,12 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
         final String stampFile;
         if(isSignature()) {
             stampFile = "/web/json/plugin/" + GetSignatureApi.class.getName() + "/service";
-        } else {
+        } else if(isQrCode()) {
             stampFile = "/web/json/plugin/" + GetQrCodeApi.class.getName() + "/service?content=foo";
+        } else {
+            stampFile = "";
         }
+
         dataModel.put("stampFile", stampFile);
         String html = FormUtil.generateElementHtml(this, formData, template, dataModel);
         return html;
@@ -75,6 +78,10 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
                 return null;
             }
 
+            if(!isSignature() && !isQrCode()) {
+                return null;
+            }
+
             final String stampPositions = FormUtil.getElementPropertyValue(this, formData);
             final int page = getPagePosition(stampPositions);
             final float top = getTopPosition(stampPositions);
@@ -82,10 +89,14 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
             final float scaleX = getScaleXPosition(stampPositions);
             final float scaleY = getScaleYPosition(stampPositions);
 
+            // signature
             if(isSignature()) {
                 final File signatureFile = getSignature();
                 stampPdf(pdfFile, signatureFile, page, left, top, scaleX, scaleY, Math.toRadians(0));
-            } else {
+            }
+
+            // QR code
+            else if(isQrCode()){
                 try (final ByteArrayOutputStream os = new ByteArrayOutputStream()) {
                     writeQrCodeToStream(getQrContent(formData), os);
 
@@ -107,8 +118,15 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
         return AppUtil.processHashVariable(getPropertyString("qrContent"), assignment, null, null);
     }
 
+    protected boolean isNoStamp() {
+        return getPropertyString("stampType").isEmpty();
+    }
     protected boolean isSignature() {
         return "signature".equalsIgnoreCase(getPropertyString("stampType"));
+    }
+
+    protected boolean isQrCode() {
+        return "qrCode".equalsIgnoreCase(getPropertyString("stampType"));
     }
 
     protected String getPdfFileName(FormData formData) throws DigitalCertificateException {

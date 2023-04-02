@@ -132,8 +132,7 @@
 					// Wait for rendering to finish
 					renderTask.promise.then(function() {
 						pageRendering = false;
-						const signed = JSON.parse(`[]`);
-						if (!fobject) {
+						if ('${stampFile!}' && !fobject) {
 							stampCanvas.width  = pdfCanvas.width;
 							stampCanvas.height = pdfCanvas.height;
 
