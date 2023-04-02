@@ -4,62 +4,48 @@ import com.itextpdf.forms.PdfAcroForm;
 import com.itextpdf.kernel.pdf.*;
 import com.itextpdf.signatures.*;
 import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateException;
+import com.kinnara.kecakplugins.digitalsignature.util.PKCS12Utils;
 import com.kinnarastudio.commons.Try;
 import com.kinnarastudio.commons.jsonstream.JSONStream;
-import com.mysql.cj.log.Log;
-import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
-import org.bouncycastle.cert.X509CertificateHolder;
-import org.bouncycastle.cert.X509v3CertificateBuilder;
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
-import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
-import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.lib.FileUpload;
 import org.joget.apps.form.model.*;
 import org.joget.apps.form.service.FormUtil;
 import org.joget.commons.util.FileManager;
 import org.joget.commons.util.LogUtil;
-import org.joget.commons.util.SecurityUtil;
-import org.joget.commons.util.SetupManager;
 import org.joget.directory.model.Department;
 import org.joget.directory.model.Employment;
 import org.joget.directory.model.Organization;
 import org.joget.directory.model.User;
 import org.joget.directory.model.service.ExtDirectoryManager;
 import org.joget.plugin.base.PluginManager;
+import org.joget.workflow.model.service.WorkflowManager;
 import org.joget.workflow.util.WorkflowUtil;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.springframework.util.ResourceUtils;
 
 import java.io.*;
-import java.math.BigInteger;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
+import java.text.ParseException;
 import java.util.*;
 import java.util.stream.Stream;
 
 
-public class DigitalCertificateFileUpload extends FileUpload {
-    public final static String DEFAULT_PASSWORD = "SuperSecurePasswordNoOneCanBreak";
-    public final static String SIGNATURE_ALGORITHM = "SHA256WithRSA";
+public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Utils {
     public final static String PATH_CERTIFICATE = "wflow/app_certificate/";
     public final static String PATH_FORMUPLOADS = "wflow/app_formuploads/";
-    public final static String ROOT_CERTIFICATE = "root/admin.pkcs12";
-    public final static String KEYSTORE_TYPE = "pkcs12";
 
     public FormRowSet formatData(FormData formData) {
         String name = WorkflowUtil.getCurrentUserFullName();
+
         //get uploaded file from app_temp
         String filePath = FormUtil.getElementPropertyValue(this, formData);
         File fileObj = new File(FileManager.getBaseDirectory() + "/" + filePath);
@@ -79,7 +65,10 @@ public class DigitalCertificateFileUpload extends FileUpload {
             if (!signed) {
                 //get digital certificate of current user login
                 String username = WorkflowUtil.getCurrentUsername();
-                URL url = ResourceUtils.getURL(PATH_CERTIFICATE + "/" + username + "/certificate." + KEYSTORE_TYPE);
+
+                String latestCertificate = getLatestCertificate(PATH_CERTIFICATE + "/" + username, "certificate." + KEYSTORE_TYPE);
+                LogUtil.info(getClassName(), "latest certificate : " + latestCertificate);
+                URL url = ResourceUtils.getURL(PATH_CERTIFICATE + "/" + username + "/"+latestCertificate);
                 final File certFile = new File(url.getPath());
                 char[] pass = getPassword();
 
@@ -89,10 +78,10 @@ public class DigitalCertificateFileUpload extends FileUpload {
                     if (!folder.exists()) {
                         folder.mkdirs();
                     }
-                    generateKey(certFile, pass, name);
+                    final String pathCertificate = getPathCertificateName(PATH_CERTIFICATE + "/" + username, "certificate." + KEYSTORE_TYPE);
+                    generateKey(pathCertificate, pass, name);
                 }
 
-//                certFile = ResourceUtils.getFile(url);
                 String path = certFile.getAbsolutePath();
                 try (InputStream is = Files.newInputStream(Paths.get(path))) {
                     KeyStore ks = KeyStore.getInstance(KEYSTORE_TYPE);
@@ -126,103 +115,15 @@ public class DigitalCertificateFileUpload extends FileUpload {
         return null;
     }
 
-    protected String getAlias(KeyStore ks, char[] pass) throws KeyStoreException, UnrecoverableKeyException, NoSuchAlgorithmException {
-        String alias = "";
-        Enumeration<String> en = ks.aliases();
-        while (en.hasMoreElements()) {
-            alias = en.nextElement();
-            Key key = ks.getKey(alias, pass);
-            if (key instanceof PrivateKey) {
-                break;
-            }
-        }
-        return alias;
-    }
-
-
     protected String getReason(FormData formData) {
-        // TODO: use Activity Name
-        return "Approval";
+        WorkflowManager wm = (WorkflowManager) WorkflowUtil.getApplicationContext().getBean("workflowManager");
+        return wm.getActivityById(formData.getActivityId()).getName();
     }
 
-    public char[] getPassword() {
-        SetupManager sm =  (SetupManager) SecurityUtil.getApplicationContext().getBean("setupManager");
-        String password = sm.getSettingValue("securityKey");
-        return (password.isEmpty() ? DEFAULT_PASSWORD : password).toCharArray();
-    }
-
-    public void generateKey(File certFile, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException {
+    public void generateKey(String pathName, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException {
         KeyPair generatedKeyPair = generateKeyPair();
-
-        String filename = certFile.getAbsolutePath();
-        storeToPKCS12(filename, pass, generatedKeyPair, userFullname);
-    }
-
-    public Certificate certificateSign(PrivateKey issuerPrivateKey, X500Name issuerDnName, PublicKey subjectPublicKey, String subjectDN)
-            throws OperatorCreationException, CertificateException, IOException {
-        Provider bcProvider = new BouncyCastleProvider();
-        Security.addProvider(bcProvider);
-
-        long now = System.currentTimeMillis();
-        Date startDate = new Date(now);
-
-        X500Name dnName = new X500Name(subjectDN);
-
-        // Using the current timestamp as the certificate serial number
-        BigInteger certSerialNumber = new BigInteger(Long.toString(now));
-
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(startDate);
-        // 1 Yr validity
-        calendar.add(Calendar.YEAR, 1);
-
-        Date endDate = calendar.getTime();
-
-        SubjectPublicKeyInfo subjectPublicKeyInfo = SubjectPublicKeyInfo.getInstance(subjectPublicKey.getEncoded());
-
-        X509v3CertificateBuilder certificateBuilder = new X509v3CertificateBuilder(issuerDnName,
-                certSerialNumber, startDate, endDate, dnName, subjectPublicKeyInfo);
-
-        ContentSigner contentSigner = new JcaContentSignerBuilder(SIGNATURE_ALGORITHM).setProvider(
-                bcProvider).build(issuerPrivateKey);
-
-        X509CertificateHolder certificateHolder = certificateBuilder.build(contentSigner);
-
-        return new JcaX509CertificateConverter()
-                .getCertificate(certificateHolder);
-    }
-
-    public void storeToPKCS12(
-            String filename, char[] password,
-            KeyPair generatedKeyPair, String name){
-
-        try (InputStream is = Files.newInputStream(Paths.get(PATH_CERTIFICATE + ROOT_CERTIFICATE));
-             OutputStream os = Files.newOutputStream(Paths.get(filename))) {
-            KeyStore ks = KeyStore.getInstance(KEYSTORE_TYPE);
-            ks.load(is, password);
-            String alias = getAlias(ks, password);
-            X509Certificate cert = (X509Certificate) ks.getCertificate(alias);
-            Certificate[] chain = ks.getCertificateChain(alias);
-
-            final PrivateKey issuerPrivateKey = (PrivateKey) ks.getKey(alias, password);
-            final X500Name issuerDn = new JcaX509CertificateHolder(cert).getSubject();
-            final PublicKey subjectPublicKey = generatedKeyPair.getPublic();
-            final String subjectDn = getDn(name, getOrganizationalUnit(), getOrganization(), getLocality(), getStateOrProvince(), getCountry());
-
-            Certificate certificate = certificateSign(issuerPrivateKey, issuerDn, subjectPublicKey, subjectDn);
-
-            KeyStore pkcs12KeyStore = KeyStore.getInstance(KEYSTORE_TYPE);
-            pkcs12KeyStore.load(null, null);
-
-            KeyStore.Entry entry = new KeyStore.PrivateKeyEntry(generatedKeyPair.getPrivate(),
-                    new Certificate[]{certificate, chain[0]});
-
-            KeyStore.ProtectionParameter param = new KeyStore.PasswordProtection(password);
-            pkcs12KeyStore.setEntry(name, entry, param);
-            pkcs12KeyStore.store(os, password);
-        } catch (Exception e){
-            LogUtil.error(getClassName(), e, e.getMessage());
-        }
+        String subjectDn = getDn(userFullname, getOrganizationalUnit(), getOrganization(), getLocality(), getStateOrProvince(), getCountry());
+        generatePKCS12(pathName, pass, generatedKeyPair, subjectDn);
     }
 
     protected String getStateOrProvince() {
@@ -334,11 +235,6 @@ public class DigitalCertificateFileUpload extends FileUpload {
             return true;
         }
         return false;
-    }
-
-    public void clearCertificate(PdfDocument pdfDocument){
-        PdfAcroForm pdfAcroForm = PdfAcroForm.getAcroForm(pdfDocument, true);
-
     }
 
     @Override

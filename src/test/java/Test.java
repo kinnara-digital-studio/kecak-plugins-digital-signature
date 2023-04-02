@@ -7,10 +7,11 @@ import java.io.IOException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.text.ParseException;
 
 public class Test {
-    @org.junit.Test
-    public void generateKey() throws CertificateException, NoSuchAlgorithmException, KeyStoreException, IOException, OperatorCreationException {
+//    @org.junit.Test
+    public void generateKey() throws CertificateException, NoSuchAlgorithmException, KeyStoreException, IOException, OperatorCreationException, ParseException {
         DigitalCertificateFileUpload obj = new DigitalCertificateFileUpload() {
             @Override
             protected String getStateOrProvince() {
@@ -33,7 +34,7 @@ public class Test {
             }
         };
         File file = File.createTempFile("cert", ".pkcs12");
-        obj.generateKey(file, "password".toCharArray(), "Aristo Keren");
+        obj.generateKey(file.getAbsolutePath(), "password".toCharArray(), "Aristo Keren");
 
         System.out.println(file.getAbsolutePath());
 

@@ -24,6 +24,7 @@ public class Activator implements BundleActivator {
         registrationList.add(context.registerService(SignApi.class.getName(), new SignApi(), null));
         registrationList.add(context.registerService(VerifyApi.class.getName(), new VerifyApi(), null));
         registrationList.add(context.registerService(DigitalCertificateFileUpload.class.getName(), new DigitalCertificateFileUpload(), null));
+        registrationList.add(context.registerService(RootCertificateStoreBinder.class.getName(), new RootCertificateStoreBinder(), null));
         registrationList.add(context.registerService(DigitalSignatureElement.class.getName(), new DigitalSignatureElement(), null));
         registrationList.add(context.registerService(DigitalSignatureElement.class.getName(), new DigitalSignatureElement(), null));
 //        registrationList.add(context.registerService(QRElement.class.getName(), new QRElement(), null));
