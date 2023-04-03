@@ -57,7 +57,7 @@ public interface PKCS12Utils {
 
             KeyStore pkcs12KeyStore = KeyStore.getInstance(KEYSTORE_TYPE);
             pkcs12KeyStore.load(null, null);
-            KeyStore.Entry entry = null;
+            KeyStore.Entry entry;
             if (root == null) {
                 entry = new KeyStore.PrivateKeyEntry(privateKey,
                         new Certificate[]{certificate});
@@ -83,8 +83,10 @@ public interface PKCS12Utils {
     }
 
 
-    default void generateRootKey(File certificateFile, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException, UnrecoverableKeyException, DigitalCertificateException {
-        // TODO
+    default void generateRootKey(File certificateFile, char[] pass) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException, UnrecoverableKeyException, DigitalCertificateException {
+        KeyPair generatedKeyPair = generateKeyPair();
+        String subjectDn = getDn("Root Kecak", "", "Kecak org.", "", "","ID");
+        generateUserPKCS12(certificateFile, pass, generatedKeyPair, subjectDn);
     }
 
     /**
@@ -110,7 +112,7 @@ public interface PKCS12Utils {
         File rootKeystoreFile = getLatestKeystore(rootKeystoreFolder, ROOT_KEYSTORE);
 
         if(!rootKeystoreFile.exists()) {
-            generateRootKey(rootKeystoreFile, password, "Root Kecak");
+            generateRootKey(rootKeystoreFile, password);
         }
 
         LogUtil.info(getClass().getName(), "latest file : " + rootKeystoreFile.getName());
