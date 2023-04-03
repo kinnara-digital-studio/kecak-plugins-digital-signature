@@ -192,7 +192,7 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
                      IOcspClient ocspClient, ITSAClient tsaClient, int estimatedSize) throws IOException, GeneralSecurityException {
 
         final String tempFilePath = dest + ".temp";
-
+        LogUtil.info(getClassName(), "path : " + dest);
         try (PdfReader reader = new PdfReader(src);
              PdfWriter writer = new PdfWriter(tempFilePath);
              PdfDocument document = new PdfDocument(reader, writer)) {
