@@ -44,64 +44,63 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
     public final static String PATH_FORMUPLOADS = "wflow/app_formuploads/";
 
     public FormRowSet formatData(FormData formData) {
-        String name = WorkflowUtil.getCurrentUserFullName();
+        String userFullname = WorkflowUtil.getCurrentUserFullName();
 
         //get uploaded file from app_temp
-        String filePath = FormUtil.getElementPropertyValue(this, formData);
-        File fileObj = new File(FileManager.getBaseDirectory() + "/" + filePath);
+        String pdfFilePath = FormUtil.getElementPropertyValue(this, formData);
+        File pdfFile = new File(FileManager.getBaseDirectory() + "/" + pdfFilePath);
 
         try {
-            if (fileObj.exists()) {
-                fileObj = FileManager.getFileByPath(filePath);
+            if (pdfFile.exists()) {
+                pdfFile = FileManager.getFileByPath(pdfFilePath);
             } else {
                 //update current file
                 Form form = FormUtil.findRootForm(this);
-                URL fileUrl = ResourceUtils.getURL(PATH_FORMUPLOADS + form.getPropertyString(FormUtil.PROPERTY_ID) + "/" + form.getPrimaryKeyValue(formData) + "/" + filePath);
-                fileObj = ResourceUtils.getFile(fileUrl.getPath());
+                URL fileUrl = ResourceUtils.getURL(PATH_FORMUPLOADS + form.getPropertyString(FormUtil.PROPERTY_ID) + "/" + form.getPrimaryKeyValue(formData) + "/" + pdfFilePath);
+                pdfFile = ResourceUtils.getFile(fileUrl.getPath());
             }
-            String absolutePath = fileObj.getAbsolutePath();
-            boolean signed = isSigned(absolutePath, name);
+            boolean signed = isSigned(pdfFile, userFullname);
+            boolean override = overrideSignature();
 
+            boolean toSign = false;
             if (!signed) {
+                toSign = true;
+            } else if (override) {
+                toSign = true;
+                // TODO : eraseSignature();
+            }
+
+            if (toSign) {
                 //get digital certificate of current user login
                 String username = WorkflowUtil.getCurrentUsername();
 
-                String latestCertificate = getLatestCertificate(PATH_CERTIFICATE + "/" + username, "certificate." + KEYSTORE_TYPE);
-                LogUtil.info(getClassName(), "latest certificate : " + latestCertificate);
-                URL url = ResourceUtils.getURL(PATH_CERTIFICATE + "/" + username + "/"+latestCertificate);
-                final File certFile = new File(url.getPath());
+                URL baseUrl = ResourceUtils.getURL(PATH_CERTIFICATE + "/" + username);
+                final File folder = new File(baseUrl.getPath());
+                final File userKeystoreFile = getLatestKeystore(folder, "certificate." + KEYSTORE_TYPE);
+                LogUtil.info(getClassName(), "latest certificate : " + userKeystoreFile.getName());
                 char[] pass = getPassword();
-
-                if (!certFile.exists()) {
-                    URL baseUrl = ResourceUtils.getURL(PATH_CERTIFICATE + "/" + username);
-                    File folder = new File(baseUrl.getPath());
-                    if (!folder.exists()) {
-                        folder.mkdirs();
-                    }
-                    final String pathCertificate = getPathCertificateName(PATH_CERTIFICATE + "/" + username, "certificate." + KEYSTORE_TYPE);
-                    generateKey(pathCertificate, pass, name);
+                if (!userKeystoreFile.exists()) {
+                    generateUserKey(userKeystoreFile, pass, userFullname);
                 }
 
-                String path = certFile.getAbsolutePath();
-                try (InputStream is = Files.newInputStream(Paths.get(path))) {
+                try (InputStream is = Files.newInputStream(userKeystoreFile.toPath())) {
                     KeyStore ks = KeyStore.getInstance(KEYSTORE_TYPE);
                     ks.load(is, pass);
 
                     String alias = getAlias(ks, pass);
                     Certificate[] chain = ks.getCertificateChain(alias);
                     PrivateKey privateKey = (PrivateKey) ks.getKey(alias, pass);
-
                     if (privateKey == null) {
-                        throw new DigitalCertificateException("Private key is not found");
+                        throw new DigitalCertificateException("Private key is not found in alias [" + alias + "] keystore [" + userKeystoreFile.getAbsolutePath() + "]");
                     }
 
                     BouncyCastleProvider provider = new BouncyCastleProvider();
                     Security.addProvider(provider);
 
-                    sign(name, absolutePath, absolutePath, chain, privateKey, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
+                    signPdf(userFullname, pdfFile, pdfFile, chain, privateKey, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
                             getReason(formData), getOrganization(), null, null, null, 0);
 
-                    LogUtil.info(getClassName(), "Document [" + fileObj.getName() + "] has been signed by [" + username + "]");
+                    LogUtil.info(getClassName(), "Document [" + pdfFile.getName() + "] has been signed by [" + username + "]");
                 }
             }
 
@@ -120,10 +119,24 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
         return wm.getActivityById(formData.getActivityId()).getName();
     }
 
-    public void generateKey(String pathName, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException {
+    /**
+     * @param certificateFile
+     * @param pass
+     * @param userFullname
+     * @return keystore file
+     * @throws NoSuchAlgorithmException
+     * @throws CertificateException
+     * @throws KeyStoreException
+     * @throws IOException
+     * @throws OperatorCreationException
+     * @throws ParseException
+     * @throws UnrecoverableKeyException
+     * @throws DigitalCertificateException
+     */
+    public void generateUserKey(File certificateFile, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException, UnrecoverableKeyException, DigitalCertificateException {
         KeyPair generatedKeyPair = generateKeyPair();
         String subjectDn = getDn(userFullname, getOrganizationalUnit(), getOrganization(), getLocality(), getStateOrProvince(), getCountry());
-        generatePKCS12(pathName, pass, generatedKeyPair, subjectDn);
+        generateUserPKCS12(certificateFile, pass, generatedKeyPair, subjectDn);
     }
 
     protected String getStateOrProvince() {
@@ -154,7 +167,9 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
                 .map(Collection::stream)
                 .orElseGet(Stream::empty)
                 .map(Employment::getDepartment)
+                .filter(Objects::nonNull)
                 .map(Department::getName)
+                .filter(Objects::nonNull)
                 .findFirst()
                 .orElse("");
     }
@@ -175,66 +190,8 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
     }
 
 
-    protected String getDn(String commonName, String organizationalUnit, String organization, String locality, String stateOrProvince, String country) {
-        return String.format("CN=%s, OU=%s, O=%s, L=%s, ST=%s, C=%s", commonName, organizationalUnit, organization, locality, stateOrProvince, country);
-    }
-
-    public KeyPair generateKeyPair() throws NoSuchAlgorithmException {
-        KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
-        generator.initialize(2048, new SecureRandom());
-
-        return generator.generateKeyPair();
-    }
-
-    public void sign(String name, String src, String dest, Certificate[] chain, PrivateKey pk,
-                     String digestAlgorithm, String provider, PdfSigner.CryptoStandard subFilter,
-                     String reason, String location, Collection<ICrlClient> crlList,
-                     IOcspClient ocspClient, ITSAClient tsaClient, int estimatedSize) throws IOException, GeneralSecurityException {
-
-        final String tempFilePath = dest + ".temp";
-
-        try (PdfReader reader = new PdfReader(src);
-             PdfWriter writer = new PdfWriter(tempFilePath);
-             PdfDocument document = new PdfDocument(reader, writer)) {
-
-            LogUtil.info(getClass().getName(), "Creating temp file ["+tempFilePath+"]");
-        }
-
-        try (PdfReader reader = new PdfReader(tempFilePath);
-             OutputStream fos = Files.newOutputStream(Paths.get(dest))) {
-
-            PdfSigner signer = new PdfSigner(reader, fos, new StampingProperties());
-
-            signer.setFieldName(name);
-            signer.setSignDate(Calendar.getInstance());
-            PdfSignatureAppearance signatureAppearance = signer.getSignatureAppearance();
-            signatureAppearance.setReason(reason).setLocation(location);
-
-            IExternalSignature pks = new PrivateKeySignature(pk, digestAlgorithm, provider);
-            IExternalDigest digest = new BouncyCastleDigest();
-
-            // Sign the document using the detached mode, CMS or CAdES equivalent.
-            signer.signDetached(digest, pks, chain, crlList, ocspClient, tsaClient, estimatedSize, subFilter);
-        }
-    }
-
-    public boolean isSigned(String path, String username) throws IOException {
-        if("true".equalsIgnoreCase(getPropertyString("override"))){
-            try (PdfReader pdfReader = new PdfReader(path);
-                 PdfDocument pdfDocument = new PdfDocument(pdfReader)) {
-                SignatureUtil signatureUtil = new SignatureUtil(pdfDocument);
-                for (String name : signatureUtil.getSignatureNames()) {
-                    if (name.equals(username)) {
-                        PdfAcroForm form = PdfAcroForm.getAcroForm(pdfDocument, true);
-                        form.flattenFields();
-                        return false;
-                    }
-                }
-            }
-        }else{
-            return true;
-        }
-        return false;
+    protected boolean overrideSignature() {
+        return "true".equalsIgnoreCase(getPropertyString("override"));
     }
 
     @Override

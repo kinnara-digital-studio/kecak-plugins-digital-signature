@@ -54,5 +54,48 @@
         "control_value": "qrCode"
       }
     ]
+  },
+  {
+    "title": "Certificate Attributes",
+    "properties" : [
+      {
+        "name": "organizationalUnit",
+        "label": "@@digitalCertificate.organizationalUnit@@",
+        "description": "@@digitalCertificate.organizationalUnit.desc@@",
+        "type": "textfield"
+      },
+      {
+        "name": "organization",
+        "label": "@@digitalCertificate.organization@@",
+        "description": "@@digitalCertificate.organization.desc@@",
+        "type": "textfield"
+      },
+      {
+        "name": "locality",
+        "label": "@@digitalCertificate.locality@@",
+        "description": "@@digitalCertificate.locality.desc@@",
+        "type": "textfield"
+      },
+      {
+        "name": "stateOrProvince",
+        "label": "@@digitalCertificate.stateOrProvince@@",
+        "description": "@@digitalCertificate.stateOrProvince.desc@@",
+        "type": "textfield"
+      },
+      {
+        "name": "country",
+        "label": "@@digitalCertificate.country@@",
+        "description": "@@digitalCertificate.country.desc@@",
+        "type": "textfield"
+      },
+      {
+        "name": "override",
+        "label": "@@digitalCertificate.override@@",
+        "description": "@@digitalCertificate.override.desc@@",
+        "type": "checkbox",
+        "value" : "true",
+        "options" : [{ "value" : "true", "label" : ""}]
+      }
+    ]
   }
 ]

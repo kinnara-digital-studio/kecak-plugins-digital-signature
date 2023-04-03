@@ -1,23 +1,40 @@
 package com.kinnara.kecakplugins.digitalsignature;
 
 import com.google.zxing.WriterException;
+import com.itextpdf.signatures.DigestAlgorithms;
+import com.itextpdf.signatures.PdfSigner;
 import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateException;
+import com.kinnara.kecakplugins.digitalsignature.util.PKCS12Utils;
 import com.kinnara.kecakplugins.digitalsignature.util.PdfUtil;
 import com.kinnara.kecakplugins.digitalsignature.util.Unclutter;
 import com.kinnara.kecakplugins.digitalsignature.webapi.GetQrCodeApi;
 import com.kinnara.kecakplugins.digitalsignature.webapi.GetSignatureApi;
+import com.kinnarastudio.commons.Try;
+import org.bouncycastle.operator.OperatorCreationException;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.*;
 import org.joget.apps.form.service.FileUtil;
 import org.joget.apps.form.service.FormUtil;
 import org.joget.commons.util.LogUtil;
+import org.joget.directory.model.Department;
+import org.joget.directory.model.Employment;
+import org.joget.directory.model.Organization;
+import org.joget.directory.model.User;
+import org.joget.directory.model.service.ExtDirectoryManager;
 import org.joget.plugin.base.PluginManager;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
+import org.joget.workflow.util.WorkflowUtil;
 
 import java.io.*;
 import java.net.URLEncoder;
+import java.security.*;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -25,7 +42,7 @@ import java.util.stream.Stream;
 /**
  * Display PDF content
  */
-public class DigitalSignatureElement extends Element implements FormBuilderPaletteElement, FileDownloadSecurity, Unclutter, PdfUtil {
+public class DigitalSignatureElement extends Element implements FormBuilderPaletteElement, FileDownloadSecurity, Unclutter, PdfUtil, PKCS12Utils {
     @Override
     public String renderTemplate(FormData formData, Map dataModel) {
         String template = "DigitalSignatureElement.ftl";
@@ -78,38 +95,59 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
                 return null;
             }
 
-            if(!isSignature() && !isQrCode()) {
-                return null;
-            }
+            if(isSignature() || isQrCode()) {
 
-            final String stampPositions = FormUtil.getElementPropertyValue(this, formData);
-            final int page = getPagePosition(stampPositions);
-            final float top = getTopPosition(stampPositions);
-            final float left = getLeftPosition(stampPositions);
-            final float scaleX = getScaleXPosition(stampPositions);
-            final float scaleY = getScaleYPosition(stampPositions);
+                final String stampPositions = FormUtil.getElementPropertyValue(this, formData);
+                final int page = getPagePosition(stampPositions);
+                final float top = getTopPosition(stampPositions);
+                final float left = getLeftPosition(stampPositions);
+                final float scaleX = getScaleXPosition(stampPositions);
+                final float scaleY = getScaleYPosition(stampPositions);
 
-            // signature
-            if(isSignature()) {
-                final File signatureFile = getSignature();
-                stampPdf(pdfFile, signatureFile, page, left, top, scaleX, scaleY, Math.toRadians(0));
-            }
+                // signature
+                if (isSignature()) {
+                    final File signatureFile = getSignature();
+                    stampPdf(pdfFile, signatureFile, page, left, top, scaleX, scaleY, Math.toRadians(0));
+                }
 
-            // QR code
-            else if(isQrCode()){
-                try (final ByteArrayOutputStream os = new ByteArrayOutputStream()) {
-                    writeQrCodeToStream(getQrContent(formData), os);
+                // QR code
+                else if (isQrCode()) {
+                    try (final ByteArrayOutputStream os = new ByteArrayOutputStream()) {
+                        writeQrCodeToStream(getQrContent(formData), os);
 
-                    final byte[] qrCode = os.toByteArray();
-                    stampPdf(pdfFile, qrCode, page, left, top, scaleX, scaleY, Math.toRadians(0));
+                        final byte[] qrCode = os.toByteArray();
+                        stampPdf(pdfFile, qrCode, page, left, top, scaleX, scaleY, Math.toRadians(0));
+                    }
                 }
             }
-        } catch (IOException | DigitalCertificateException | WriterException e) {
+
+            final String fullname = WorkflowUtil.getCurrentUserFullName();
+            final String username = WorkflowUtil.getCurrentUsername();
+            final char[] password = getPassword();
+            final File userKeystore = getLatestKeystore(new File(PATH_CERTIFICATE + "/" + username), "certificate." + KEYSTORE_TYPE);
+            if(!userKeystore.exists()) {
+                generateUserKey(userKeystore, password, fullname);
+            }
+
+            final Certificate[] certifcateChain = getCertificateChain(userKeystore, password);
+            final PrivateKey privateKey = getPrivateKey(userKeystore, password);
+            final Provider securityProvider = getSecurityProvider();
+
+            signPdf(fullname, pdfFile, certifcateChain, privateKey, DigestAlgorithms.SHA256, securityProvider.getName(), PdfSigner.CryptoStandard.CMS,
+                    getReason(formData), getOrganization(), null, null, null, 0);
+
+        } catch (IOException | DigitalCertificateException | WriterException | ParseException |
+                 GeneralSecurityException | OperatorCreationException e) {
             LogUtil.error(getClass().getName(), e, e.getMessage());
         }
 
         // do not store anything in database
         return null;
+    }
+
+    protected String getReason(FormData formData) {
+        WorkflowManager wm = (WorkflowManager) WorkflowUtil.getApplicationContext().getBean("workflowManager");
+        return wm.getActivityById(formData.getActivityId()).getName();
     }
 
     protected String getQrContent(FormData formData) {
@@ -118,9 +156,6 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
         return AppUtil.processHashVariable(getPropertyString("qrContent"), assignment, null, null);
     }
 
-    protected boolean isNoStamp() {
-        return getPropertyString("stampType").isEmpty();
-    }
     protected boolean isSignature() {
         return "signature".equalsIgnoreCase(getPropertyString("stampType"));
     }
@@ -215,5 +250,78 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
         return true;
     }
 
+    protected String getStateOrProvince() {
+        return getPropertyString("stateOrProvince");
+    }
 
+    protected String getCountry() {
+        return getPropertyString("country");
+    }
+
+    protected String getLocality() {
+        return getPropertyString("locality");
+    }
+
+    protected String getOrganizationalUnit() {
+        final String propValue = getPropertyString("organizationalUnit");
+        if (!propValue.isEmpty()) {
+            return propValue;
+        }
+
+        final ExtDirectoryManager directoryManager = (ExtDirectoryManager) AppUtil.getApplicationContext().getBean("directoryManager");
+
+        final String username = WorkflowUtil.getCurrentUsername();
+        final User user = directoryManager.getUserById(username);
+        final Set<Employment> employments = (Set<Employment>) user.getEmployments();
+
+        return Optional.ofNullable(employments)
+                .map(Collection::stream)
+                .orElseGet(Stream::empty)
+                .map(Employment::getDepartment)
+                .filter(Objects::nonNull)
+                .map(Department::getName)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse("");
+    }
+
+    protected String getOrganization() {
+        final String propValue = getPropertyString("organization");
+        if (!propValue.isEmpty()) {
+            return propValue;
+        }
+
+        final ExtDirectoryManager directoryManager = (ExtDirectoryManager) AppUtil.getApplicationContext().getBean("directoryManager");
+
+        final String orgId = WorkflowUtil.getCurrentUserOrgId();
+        return Optional.of(orgId)
+                .map(directoryManager::getOrganization)
+                .map(Organization::getName)
+                .orElse("");
+    }
+
+
+    /**
+     * @param userKeystore
+     * @param pass
+     * @param userFullname
+     * @return keystore file
+     * @throws NoSuchAlgorithmException
+     * @throws CertificateException
+     * @throws KeyStoreException
+     * @throws IOException
+     * @throws OperatorCreationException
+     * @throws ParseException
+     * @throws UnrecoverableKeyException
+     * @throws DigitalCertificateException
+     */
+    public void generateUserKey(File userKeystore, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException, UnrecoverableKeyException, DigitalCertificateException {
+        KeyPair generatedKeyPair = generateKeyPair();
+        String subjectDn = getDn(userFullname, getOrganizationalUnit(), getOrganization(), getLocality(), getStateOrProvince(), getCountry());
+        generateUserPKCS12(userKeystore, pass, generatedKeyPair, subjectDn);
+    }
+
+    public void generateRootKey(File certificateFile, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException, UnrecoverableKeyException, DigitalCertificateException {
+        // TODO
+    }
 }
