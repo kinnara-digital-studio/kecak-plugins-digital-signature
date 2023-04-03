@@ -3,6 +3,7 @@ package com.kinnara.kecakplugins.digitalsignature;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import com.kinnara.kecakplugins.digitalsignature.menu.DigitalSignatureVerifyMenu;
 import com.kinnara.kecakplugins.digitalsignature.webapi.GetQrCodeApi;
 import com.kinnara.kecakplugins.digitalsignature.webapi.GetSignatureApi;
 import com.kinnara.kecakplugins.digitalsignature.webapi.SignApi;
@@ -26,7 +27,7 @@ public class Activator implements BundleActivator {
         registrationList.add(context.registerService(DigitalCertificateFileUpload.class.getName(), new DigitalCertificateFileUpload(), null));
         registrationList.add(context.registerService(RootCertificateStoreBinder.class.getName(), new RootCertificateStoreBinder(), null));
         registrationList.add(context.registerService(DigitalSignatureElement.class.getName(), new DigitalSignatureElement(), null));
-        registrationList.add(context.registerService(DigitalSignatureElement.class.getName(), new DigitalSignatureElement(), null));
+        registrationList.add(context.registerService(DigitalSignatureVerifyMenu.class.getName(), new DigitalSignatureVerifyMenu(), null));
 //        registrationList.add(context.registerService(QRElement.class.getName(), new QRElement(), null));
     }
 

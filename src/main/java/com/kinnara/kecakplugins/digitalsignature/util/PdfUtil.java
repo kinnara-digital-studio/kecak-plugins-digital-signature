@@ -11,10 +11,7 @@ import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.geom.AffineTransform;
 import com.itextpdf.kernel.pdf.*;
 import com.itextpdf.kernel.pdf.canvas.PdfCanvas;
-import com.itextpdf.signatures.*;
-import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateException;
 import net.glxn.qrgen.javase.QRCode;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.joget.commons.util.LogUtil;
 import org.joget.workflow.util.WorkflowUtil;
 import org.springframework.util.ResourceUtils;
@@ -24,12 +21,8 @@ import javax.annotation.Nonnull;
 import javax.imageio.ImageIO;
 import java.io.*;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.security.*;
-import java.security.cert.Certificate;
-import java.security.cert.CertificateException;
-import java.util.*;
+import java.util.Collections;
+import java.util.Map;
 
 public interface PdfUtil {
     String PATH_CERTIFICATE = "wflow/app_certificate/";
@@ -87,39 +80,6 @@ public interface PdfUtil {
             } else {
                 LogUtil.warn(getClass().getName(), "Error deleting temp file [" + tempPdfFile.getPath() + "]");
             }
-        }
-    }
-
-
-    default void signPdf(String name, File pdfFile, Certificate[] chain, PrivateKey pk,
-              String digestAlgorithm, String securityProvider, PdfSigner.CryptoStandard subFilter,
-              String reason, String location, Collection<ICrlClient> crlList,
-              IOcspClient ocspClient, ITSAClient tsaClient, int estimatedSize) throws IOException, GeneralSecurityException {
-
-        final String tempFilePath = pdfFile.getAbsolutePath() + ".temp";
-
-        try (PdfReader reader = new PdfReader(pdfFile);
-             PdfWriter writer = new PdfWriter(tempFilePath);
-             PdfDocument document = new PdfDocument(reader, writer)) {
-
-            LogUtil.info(getClass().getName(), "Creating temp file ["+tempFilePath+"]");
-        }
-
-        try (PdfReader reader = new PdfReader(tempFilePath);
-             OutputStream fos = Files.newOutputStream(pdfFile.toPath())) {
-
-            PdfSigner signer = new PdfSigner(reader, fos, new StampingProperties());
-
-            signer.setFieldName(name);
-            signer.setSignDate(Calendar.getInstance());
-            PdfSignatureAppearance signatureAppearance = signer.getSignatureAppearance();
-            signatureAppearance.setReason(reason).setLocation(location);
-
-            IExternalSignature pks = new PrivateKeySignature(pk, digestAlgorithm, securityProvider);
-            IExternalDigest digest = new BouncyCastleDigest();
-
-            // Sign the document using the detached mode, CMS or CAdES equivalent.
-            signer.signDetached(digest, pks, chain, crlList, ocspClient, tsaClient, estimatedSize, subFilter);
         }
     }
 

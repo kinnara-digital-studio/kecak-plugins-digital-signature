@@ -26,8 +26,10 @@ import org.joget.plugin.base.PluginManager;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.joget.workflow.util.WorkflowUtil;
+import org.springframework.util.ResourceUtils;
 
 import java.io.*;
+import java.net.URL;
 import java.net.URLEncoder;
 import java.security.*;
 import java.security.cert.Certificate;
@@ -124,7 +126,12 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
             final String fullname = WorkflowUtil.getCurrentUserFullName();
             final String username = WorkflowUtil.getCurrentUsername();
             final char[] password = getPassword();
-            final File userKeystore = getLatestKeystore(new File(PATH_CERTIFICATE + "/" + username), "certificate." + KEYSTORE_TYPE);
+            final File keystoreFolder = new File(ResourceUtils.getURL(PATH_CERTIFICATE + "/" + username ).getPath());
+            if(!keystoreFolder.exists()) {
+                keystoreFolder.mkdir();
+            }
+
+            final File userKeystore = getLatestKeystore(keystoreFolder, "certificate." + KEYSTORE_TYPE);
             if(!userKeystore.exists()) {
                 generateUserKey(userKeystore, password, fullname);
             }
@@ -133,7 +140,7 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
             final PrivateKey privateKey = getPrivateKey(userKeystore, password);
             final Provider securityProvider = getSecurityProvider();
 
-            signPdf(fullname, pdfFile, certifcateChain, privateKey, DigestAlgorithms.SHA256, securityProvider.getName(), PdfSigner.CryptoStandard.CMS,
+            signPdf(fullname, pdfFile, pdfFile, certifcateChain, privateKey, DigestAlgorithms.SHA256, securityProvider.getName(), PdfSigner.CryptoStandard.CMS,
                     getReason(formData), getOrganization(), null, null, null, 0);
 
         } catch (IOException | DigitalCertificateException | WriterException | ParseException |
