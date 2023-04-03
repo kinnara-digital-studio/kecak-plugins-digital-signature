@@ -17,5 +17,85 @@
         "value" : "Digital Signature"
       }
     ]
+  },
+  {
+    "title": "@@digital.signature.stampSettings@@",
+    "properties": [
+      {
+        "label" : "@@digital.signature.stamp@@",
+        "type" : "header"
+      },
+      {
+        "name": "stampType",
+        "label": "@@digital.signature.stampType@@",
+        "type": "radio",
+        "value": "signature",
+        "options": [
+          {
+            "value": "",
+            "label": "@@digital.signature.stampType.none@@"
+          },
+          {
+            "value": "signature",
+            "label": "@@digital.signature.stampType.signature@@"
+          },
+          {
+            "value": "qrCode",
+            "label": "@@digital.signature.stampType.qrCode@@"
+          }
+        ]
+      },
+      {
+        "name": "qrContent",
+        "label": "@@digital.signature.qrContent@@",
+        "type": "codeeditor",
+        "required": "true",
+        "control_field": "stampType",
+        "control_value": "qrCode"
+      }
+    ]
+  },
+  {
+    "title": "Certificate Attributes",
+    "properties" : [
+      {
+        "name": "organizationalUnit",
+        "label": "@@digitalCertificate.organizationalUnit@@",
+        "description": "@@digitalCertificate.organizationalUnit.desc@@",
+        "type": "textfield"
+      },
+      {
+        "name": "organization",
+        "label": "@@digitalCertificate.organization@@",
+        "description": "@@digitalCertificate.organization.desc@@",
+        "type": "textfield"
+      },
+      {
+        "name": "locality",
+        "label": "@@digitalCertificate.locality@@",
+        "description": "@@digitalCertificate.locality.desc@@",
+        "type": "textfield"
+      },
+      {
+        "name": "stateOrProvince",
+        "label": "@@digitalCertificate.stateOrProvince@@",
+        "description": "@@digitalCertificate.stateOrProvince.desc@@",
+        "type": "textfield"
+      },
+      {
+        "name": "country",
+        "label": "@@digitalCertificate.country@@",
+        "description": "@@digitalCertificate.country.desc@@",
+        "type": "textfield"
+      },
+      {
+        "name": "override",
+        "label": "@@digitalCertificate.override@@",
+        "description": "@@digitalCertificate.override.desc@@",
+        "type": "checkbox",
+        "value" : "true",
+        "options" : [{ "value" : "true", "label" : ""}]
+      }
+    ]
   }
 ]

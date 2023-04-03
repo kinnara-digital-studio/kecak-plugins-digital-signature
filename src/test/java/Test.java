@@ -1,11 +1,14 @@
 import com.kinnara.kecakplugins.digitalsignature.DigitalCertificateFileUpload;
+import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateException;
 import org.bouncycastle.operator.OperatorCreationException;
+import org.joget.commons.util.LogUtil;
 import org.junit.Assert;
 
 import java.io.File;
 import java.io.IOException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.text.ParseException;
 
@@ -34,7 +37,11 @@ public class Test {
             }
         };
         File file = File.createTempFile("cert", ".pkcs12");
-        obj.generateKey(file.getAbsolutePath(), "password".toCharArray(), "Aristo Keren");
+        try {
+            obj.generateUserKey(file, "password".toCharArray(), "Aristo Keren");
+        } catch (UnrecoverableKeyException | DigitalCertificateException e) {
+            LogUtil.error(getClass().getName(), e, e.getMessage());
+        }
 
         System.out.println(file.getAbsolutePath());
 

@@ -1,15 +1,9 @@
 package com.kinnara.kecakplugins.digitalsignature;
 
 import com.kinnara.kecakplugins.digitalsignature.util.PKCS12Utils;
-import com.mysql.cj.log.Log;
-import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
-import org.bouncycastle.openssl.PEMKeyPair;
-import org.bouncycastle.openssl.PEMParser;
-import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 import org.bouncycastle.util.encoders.Base64;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.*;
-import org.joget.apps.form.service.FormUtil;
 import org.joget.commons.util.FileManager;
 import org.joget.commons.util.LogUtil;
 import org.joget.plugin.base.PluginManager;
@@ -19,7 +13,6 @@ import java.io.*;
 import java.net.URL;
 import java.security.*;
 import java.security.cert.Certificate;
-import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.ResourceBundle;
@@ -52,8 +45,8 @@ public class RootCertificateStoreBinder extends FormBinder implements FormStoreE
             //get private key
             final PrivateKey privateKey = getPemPrivateKey(FileManager.getBaseDirectory() + "/" + pathKey);
 
-            final String pathCertificate = getPathCertificateName(PATH_ROOT, ROOT_CERTIFICATE);
-            storeToPKCS12(pathCertificate, certificate, privateKey, null);
+            final File rootKeystore = getPathCertificateName(new File(PATH_ROOT), ROOT_KEYSTORE);
+            storeToPKCS12(rootKeystore, certificate, privateKey, null);
 
         } catch (Exception e) {
             LogUtil.error(getClassName(), e, e.getMessage());
