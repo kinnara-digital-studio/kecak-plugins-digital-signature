@@ -9,6 +9,8 @@ import com.kinnarastudio.commons.Try;
 import com.kinnarastudio.commons.jsonstream.JSONStream;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.OperatorCreationException;
+import org.enhydra.shark.xpdl.elements.Activity;
+import org.enhydra.shark.xpil.XPDLActivityDocument;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.lib.FileUpload;
 import org.joget.apps.form.model.*;
@@ -21,6 +23,7 @@ import org.joget.directory.model.Organization;
 import org.joget.directory.model.User;
 import org.joget.directory.model.service.ExtDirectoryManager;
 import org.joget.plugin.base.PluginManager;
+import org.joget.workflow.model.WorkflowActivity;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.joget.workflow.util.WorkflowUtil;
 import org.json.JSONArray;
@@ -100,7 +103,7 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
                     signPdf(userFullname, pdfFile, pdfFile, chain, privateKey, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
                             getReason(formData), getOrganization(), null, null, null, 0);
 
-                    LogUtil.info(getClassName(), "Document [" + pdfFile.getName() + "] has been signed by [" + username + "]");
+                    LogUtil.info(getClassName(), "Document [" + pdfFile.getName() + "] has been signed by [" + userFullname + "]");
                 }
             }
 
@@ -116,7 +119,14 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
 
     protected String getReason(FormData formData) {
         WorkflowManager wm = (WorkflowManager) WorkflowUtil.getApplicationContext().getBean("workflowManager");
-        return wm.getActivityById(formData.getActivityId()).getName();
+        String activityId = formData.getActivityId();
+        String activityName = "Approval";
+        if(!activityId.isEmpty()){
+            WorkflowActivity activity = wm.getActivityById(activityId);
+            activityName = activity.getName();
+            LogUtil.info(getClassName(), "Activity Name : " + activityName);
+        }
+        return activityName;
     }
 
     /**

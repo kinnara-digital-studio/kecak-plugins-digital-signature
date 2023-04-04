@@ -290,7 +290,7 @@ public interface PKCS12Utils {
         try (PdfReader reader = new PdfReader(tempFile);
              OutputStream fos = Files.newOutputStream(dest.toPath())) {
 
-            PdfSigner signer = new PdfSigner(reader, fos, new StampingProperties());
+            PdfSigner signer = new PdfSigner(reader, fos, new StampingProperties().useAppendMode());
 
             signer.setFieldName(name);
             signer.setSignDate(Calendar.getInstance());
@@ -302,20 +302,19 @@ public interface PKCS12Utils {
 
             // Sign the document using the detached mode, CMS or CAdES equivalent.
             signer.signDetached(digest, pks, chain, crlList, ocspClient, tsaClient, estimatedSize, subFilter);
-
-            if(tempFile.delete()) {
-                LogUtil.debug(getClass().getName(), "Temp file [" + tempFile.getAbsolutePath() + "] has been deleted");
-            }
+        }
+        if(tempFile.delete()) {
+            LogUtil.debug(getClass().getName(), "Temp file [" + tempFile.getAbsolutePath() + "] has been deleted");
         }
     }
 
-    default boolean isSigned(File pdfFile, String username) throws IOException {
+    default boolean isSigned(File pdfFile, String userFullName) throws IOException {
         try (PdfReader pdfReader = new PdfReader(pdfFile);
              PdfDocument pdfDocument = new PdfDocument(pdfReader)) {
 
             SignatureUtil signatureUtil = new SignatureUtil(pdfDocument);
             for (String name : signatureUtil.getSignatureNames()) {
-                if (name.equals(username)) {
+                if (name.equals(userFullName)) {
                     return true;
                 }
             }
@@ -338,6 +337,10 @@ public interface PKCS12Utils {
              PdfDocument pdfDocument = new PdfDocument(reader, writer)) {
             PdfAcroForm acroForm = PdfAcroForm.getAcroForm(pdfDocument, true);
             acroForm.removeField(signatureName);
+        }
+
+        if(tempFile.delete()) {
+            LogUtil.debug(getClass().getName(), "Temp file [" + tempFile.getAbsolutePath() + "] has been deleted");
         }
 
     }
