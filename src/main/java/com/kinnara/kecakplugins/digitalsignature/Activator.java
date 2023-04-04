@@ -28,7 +28,6 @@ public class Activator implements BundleActivator {
         registrationList.add(context.registerService(RootCertificateStoreBinder.class.getName(), new RootCertificateStoreBinder(), null));
         registrationList.add(context.registerService(DigitalSignatureElement.class.getName(), new DigitalSignatureElement(), null));
         registrationList.add(context.registerService(DigitalSignatureVerifyMenu.class.getName(), new DigitalSignatureVerifyMenu(), null));
-//        registrationList.add(context.registerService(QRElement.class.getName(), new QRElement(), null));
     }
 
     public void stop(BundleContext context) {

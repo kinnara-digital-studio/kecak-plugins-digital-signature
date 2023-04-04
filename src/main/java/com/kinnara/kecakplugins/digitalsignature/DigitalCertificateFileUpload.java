@@ -21,6 +21,7 @@ import org.joget.directory.model.Organization;
 import org.joget.directory.model.User;
 import org.joget.directory.model.service.ExtDirectoryManager;
 import org.joget.plugin.base.PluginManager;
+import org.joget.workflow.model.WorkflowActivity;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.joget.workflow.util.WorkflowUtil;
 import org.json.JSONArray;
@@ -115,8 +116,17 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
     }
 
     protected String getReason(FormData formData) {
+        final String propValue = getPropertyString("reason");
+        if(!propValue.isEmpty()) {
+            return propValue;
+        }
+
         WorkflowManager wm = (WorkflowManager) WorkflowUtil.getApplicationContext().getBean("workflowManager");
-        return wm.getActivityById(formData.getActivityId()).getName();
+        return Optional.of(formData)
+                .map(FormData::getActivityId)
+                .map(wm::getActivityById)
+                .map(WorkflowActivity::getName)
+                .orElse("");
     }
 
     /**

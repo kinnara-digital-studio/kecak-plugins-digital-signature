@@ -59,39 +59,58 @@
     "title": "Certificate Attributes",
     "properties" : [
       {
+        "label" : "Subject",
+        "type" : "header"
+      },
+      {
         "name": "organizationalUnit",
-        "label": "@@digitalCertificate.organizationalUnit@@",
-        "description": "@@digitalCertificate.organizationalUnit.desc@@",
+        "label": "@@digital.signature.organizationalUnit@@",
+        "description": "@@digital.signature.organizationalUnit.desc@@",
         "type": "textfield"
       },
       {
         "name": "organization",
-        "label": "@@digitalCertificate.organization@@",
-        "description": "@@digitalCertificate.organization.desc@@",
+        "label": "@@digital.signature.organization@@",
+        "description": "@@digital.signature.organization.desc@@",
         "type": "textfield"
       },
       {
         "name": "locality",
-        "label": "@@digitalCertificate.locality@@",
-        "description": "@@digitalCertificate.locality.desc@@",
+        "label": "@@digital.signature.locality@@",
+        "description": "@@digital.signature.locality.desc@@",
         "type": "textfield"
       },
       {
         "name": "stateOrProvince",
-        "label": "@@digitalCertificate.stateOrProvince@@",
-        "description": "@@digitalCertificate.stateOrProvince.desc@@",
+        "label": "@@digital.signature.stateOrProvince@@",
+        "description": "@@digital.signature.stateOrProvince.desc@@",
         "type": "textfield"
       },
       {
         "name": "country",
-        "label": "@@digitalCertificate.country@@",
-        "description": "@@digitalCertificate.country.desc@@",
+        "label": "@@digital.signature.country@@",
+        "description": "@@digital.signature.country.desc@@",
         "type": "textfield"
       },
       {
+        "label" : "@@digital.signature.fields@@",
+        "type" : "header"
+      },
+      {
+        "name": "reason",
+        "label": "@@digital.signature.reason@@",
+        "description": "@@digital.signature.reason.desc@@",
+        "type": "textfield"
+      }
+    ]
+  },
+  {
+    "title": "Advance",
+    "properties" : [
+      {
         "name": "override",
-        "label": "@@digitalCertificate.override@@",
-        "description": "@@digitalCertificate.override.desc@@",
+        "label": "@@digital.signature.override@@",
+        "description": "@@digital.signature.override.desc@@",
         "type": "checkbox",
         "value" : "true",
         "options" : [{ "value" : "true", "label" : ""}]

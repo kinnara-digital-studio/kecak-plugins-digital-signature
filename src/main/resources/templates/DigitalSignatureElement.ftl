@@ -64,9 +64,7 @@
             <canvas id="pdf-canvas-${uniqueKey}" width="100%" height="500px" style="display:block;cursor:pointer;cursor: hand;"></canvas>
             <canvas id="stamp-canvas-${uniqueKey}"></canvas>
         </div>
-        <i id="item-delete-btn" class="item-btn item-btn-danger md-icon md-light material-icons">clear</i>
-        <i id="item-confirm-btn" class="item-btn item-btn-success md-icon md-light material-icons">check</i>
-		<div class="uk-panel uk-panel-box" id="signature-or-initial">
+        <div class="uk-panel uk-panel-box" id="signature-or-initial">
 			<div class="item">
 				<img src="" alt="Signature" data-tipe="1" >
 			</div>
