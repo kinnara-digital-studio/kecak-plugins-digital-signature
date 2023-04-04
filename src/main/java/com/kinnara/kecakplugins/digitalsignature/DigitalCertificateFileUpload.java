@@ -118,10 +118,11 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
     }
 
     protected String getReason(FormData formData) {
-        WorkflowManager wm = (WorkflowManager) WorkflowUtil.getApplicationContext().getBean("workflowManager");
-        String activityId = formData.getActivityId();
         String activityName = "Approval";
+
+        String activityId = formData.getActivityId();
         if(!activityId.isEmpty()){
+            WorkflowManager wm = (WorkflowManager) WorkflowUtil.getApplicationContext().getBean("workflowManager");
             WorkflowActivity activity = wm.getActivityById(activityId);
             activityName = activity.getName();
             LogUtil.info(getClassName(), "Activity Name : " + activityName);
@@ -146,7 +147,7 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
     public void generateUserKey(File certificateFile, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException, UnrecoverableKeyException, DigitalCertificateException {
         KeyPair generatedKeyPair = generateKeyPair();
         String subjectDn = getDn(userFullname, getOrganizationalUnit(), getOrganization(), getLocality(), getStateOrProvince(), getCountry());
-        generateUserPKCS12(certificateFile, pass, generatedKeyPair, subjectDn);
+        generatePKCS12(certificateFile, pass, generatedKeyPair, subjectDn, false);
     }
 
     protected String getStateOrProvince() {

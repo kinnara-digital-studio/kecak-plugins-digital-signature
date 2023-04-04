@@ -325,6 +325,6 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
     public void generateUserKey(File userKeystore, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException, UnrecoverableKeyException, DigitalCertificateException {
         KeyPair generatedKeyPair = generateKeyPair();
         String subjectDn = getDn(userFullname, getOrganizationalUnit(), getOrganization(), getLocality(), getStateOrProvince(), getCountry());
-        generateUserPKCS12(userKeystore, pass, generatedKeyPair, subjectDn);
+        generatePKCS12(userKeystore, pass, generatedKeyPair, subjectDn, false);
     }
 }
