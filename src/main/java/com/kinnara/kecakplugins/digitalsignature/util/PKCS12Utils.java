@@ -7,10 +7,6 @@ import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.kernel.pdf.StampingProperties;
 import com.itextpdf.signatures.*;
 import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateException;
-import com.lowagie.text.DocumentException;
-import com.lowagie.text.pdf.AcroFields;
-import com.lowagie.text.pdf.PdfStamper;
-import com.mysql.cj.log.Log;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.cert.X509CertificateHolder;
@@ -24,11 +20,13 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.joget.commons.util.LogUtil;
 import org.joget.commons.util.SecurityUtil;
 import org.joget.commons.util.SetupManager;
+import org.joget.workflow.util.WorkflowUtil;
+import org.springframework.util.ResourceUtils;
 
 import java.io.*;
 import java.math.BigInteger;
+import java.net.URL;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
@@ -39,6 +37,7 @@ import java.util.*;
 import java.util.stream.Stream;
 
 public interface PKCS12Utils {
+    String PATH_USER_CERTIFICATE = "wflow/app_certificate/";
     String PATH_ROOT = "wflow/app_certificate/root";
     String ROOT_KEYSTORE = "root.pkcs12";
     String DEFAULT_PASSWORD = "SuperSecurePasswordNoOneCanBreak";
@@ -224,10 +223,8 @@ public interface PKCS12Utils {
 
     default Certificate[] getCertificateChain(File certificateFile, char[] password) throws IOException, CertificateException, NoSuchAlgorithmException, KeyStoreException, UnrecoverableKeyException {
         try (InputStream is = Files.newInputStream(certificateFile.toPath())) {
-
             final KeyStore ks = KeyStore.getInstance(KEYSTORE_TYPE);
             ks.load(is, password);
-
             final String alias = getAlias(ks, password);
             Certificate[] chain = ks.getCertificateChain(alias);
             return chain;
@@ -265,6 +262,30 @@ public interface PKCS12Utils {
         KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
         generator.initialize(2048, new SecureRandom());
         return generator.generateKeyPair();
+    }
+
+    default void startSign(File userKeystoreFile, File pdfFile, String userFullname, String reason, String organization) throws FileNotFoundException {
+        char[] pass = getPassword();
+        try (InputStream is = Files.newInputStream(userKeystoreFile.toPath())) {
+            KeyStore ks = KeyStore.getInstance(KEYSTORE_TYPE);
+            ks.load(is, pass);
+
+            String alias = getAlias(ks, pass);
+            Certificate[] chain = ks.getCertificateChain(alias);
+            PrivateKey privateKey = (PrivateKey) ks.getKey(alias, pass);
+            if (privateKey == null) {
+                throw new DigitalCertificateException("Private key is not found in alias [" + alias + "] keystore [" + userKeystoreFile.getAbsolutePath() + "]");
+            }
+
+            BouncyCastleProvider provider = new BouncyCastleProvider();
+            Security.addProvider(provider);
+
+            signPdf(userFullname, pdfFile, pdfFile, chain, privateKey, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
+                    reason, organization, null, null, null, 0);
+
+        } catch (IOException | GeneralSecurityException | DigitalCertificateException e) {
+            LogUtil.error(getClass().getName(), e, e.getMessage());
+        }
     }
 
     default void signPdf(String name, File src, File dest, Certificate[] chain, PrivateKey pk,

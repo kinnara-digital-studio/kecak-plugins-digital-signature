@@ -136,13 +136,7 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
                 generateUserKey(userKeystore, password, fullname);
             }
 
-            final Certificate[] certifcateChain = getCertificateChain(userKeystore, password);
-            final PrivateKey privateKey = getPrivateKey(userKeystore, password);
-            final Provider securityProvider = getSecurityProvider();
-
-            signPdf(fullname, pdfFile, pdfFile, certifcateChain, privateKey, DigestAlgorithms.SHA256, securityProvider.getName(), PdfSigner.CryptoStandard.CMS,
-                    getReason(formData), getOrganization(), null, null, null, 0);
-
+            startSign(userKeystore, pdfFile, fullname, getReason(formData), getOrganization());
         } catch (IOException | DigitalCertificateException | WriterException | ParseException |
                  GeneralSecurityException | OperatorCreationException e) {
             LogUtil.error(getClass().getName(), e, e.getMessage());

@@ -86,25 +86,8 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
                     generateUserKey(userKeystoreFile, pass, userFullname);
                 }
 
-                try (InputStream is = Files.newInputStream(userKeystoreFile.toPath())) {
-                    KeyStore ks = KeyStore.getInstance(KEYSTORE_TYPE);
-                    ks.load(is, pass);
-
-                    String alias = getAlias(ks, pass);
-                    Certificate[] chain = ks.getCertificateChain(alias);
-                    PrivateKey privateKey = (PrivateKey) ks.getKey(alias, pass);
-                    if (privateKey == null) {
-                        throw new DigitalCertificateException("Private key is not found in alias [" + alias + "] keystore [" + userKeystoreFile.getAbsolutePath() + "]");
-                    }
-
-                    BouncyCastleProvider provider = new BouncyCastleProvider();
-                    Security.addProvider(provider);
-
-                    signPdf(userFullname, pdfFile, pdfFile, chain, privateKey, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
-                            getReason(formData), getOrganization(), null, null, null, 0);
-
-                    LogUtil.info(getClassName(), "Document [" + pdfFile.getName() + "] has been signed by [" + userFullname + "]");
-                }
+                startSign(userKeystoreFile, pdfFile, userFullname, getReason(formData),getOrganization());
+                LogUtil.info(getClassName(), "Document [" + pdfFile.getName() + "] has been signed by [" + userFullname + "]");
             }
 
             return super.formatData(formData);
