@@ -9,6 +9,8 @@ import com.kinnarastudio.commons.Try;
 import com.kinnarastudio.commons.jsonstream.JSONStream;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.OperatorCreationException;
+import org.enhydra.shark.xpdl.elements.Activity;
+import org.enhydra.shark.xpil.XPDLActivityDocument;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.lib.FileUpload;
 import org.joget.apps.form.model.*;
@@ -101,7 +103,7 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
                     signPdf(userFullname, pdfFile, pdfFile, chain, privateKey, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
                             getReason(formData), getOrganization(), null, null, null, 0);
 
-                    LogUtil.info(getClassName(), "Document [" + pdfFile.getName() + "] has been signed by [" + username + "]");
+                    LogUtil.info(getClassName(), "Document [" + pdfFile.getName() + "] has been signed by [" + userFullname + "]");
                 }
             }
 
@@ -146,7 +148,7 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
     public void generateUserKey(File certificateFile, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException, UnrecoverableKeyException, DigitalCertificateException {
         KeyPair generatedKeyPair = generateKeyPair();
         String subjectDn = getDn(userFullname, getOrganizationalUnit(), getOrganization(), getLocality(), getStateOrProvince(), getCountry());
-        generateUserPKCS12(certificateFile, pass, generatedKeyPair, subjectDn);
+        generatePKCS12(certificateFile, pass, generatedKeyPair, subjectDn, false);
     }
 
     protected String getStateOrProvince() {

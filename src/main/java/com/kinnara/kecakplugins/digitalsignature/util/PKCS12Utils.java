@@ -86,16 +86,7 @@ public interface PKCS12Utils {
     default void generateRootKey(File certificateFile) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException, UnrecoverableKeyException, DigitalCertificateException {
         KeyPair generatedKeyPair = generateKeyPair();
         String subjectDn = getDn("Root Kecak", "Kecak", "Kecak.org", "ID", "West Java", "Bandung");
-        generateRootPKCS12(certificateFile, generatedKeyPair, subjectDn);
-    }
-
-    default void generateRootPKCS12(File certificateFile, KeyPair generatedKeyPair, String subjectDn) throws CertificateException, OperatorCreationException, DigitalCertificateException {
-        final PublicKey subjectPublicKey = generatedKeyPair.getPublic();
-        final PrivateKey issuerPrivateKey = generatedKeyPair.getPrivate();
-        final X500Name issuerDn = new X500Name(subjectDn);
-
-        Certificate certificate = certificateSign(issuerPrivateKey, issuerDn, subjectPublicKey, subjectDn);
-        storeToPKCS12(certificateFile, certificate, generatedKeyPair.getPrivate(), null);
+        generatePKCS12(certificateFile, getPassword(), generatedKeyPair, subjectDn, false);
     }
 
     /**
@@ -113,37 +104,39 @@ public interface PKCS12Utils {
      * @throws NoSuchAlgorithmException
      * @throws IOException
      */
-    default void generateUserPKCS12(
+
+    default void generatePKCS12(
             File userKeystoreFile, char[] password,
-            KeyPair generatedKeyPair, String subjectDn) throws ParseException, DigitalCertificateException, CertificateException, OperatorCreationException, UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, IOException {
+            KeyPair generatedKeyPair, String subjectDn, boolean isRoot) throws ParseException, DigitalCertificateException, CertificateException, OperatorCreationException, UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, IOException {
 
-        final File rootKeystoreFolder = new File(PATH_ROOT);
-        File rootKeystoreFile = getLatestKeystore(rootKeystoreFolder, ROOT_KEYSTORE);
+        final PublicKey subjectPublicKey = generatedKeyPair.getPublic();
+        PrivateKey issuerPrivateKey = generatedKeyPair.getPrivate();
+        X500Name issuerDn = new X500Name(subjectDn);
+        Certificate root = null;
 
-        if (!rootKeystoreFile.exists()) {
-            generateRootKey(rootKeystoreFile);
+        if(!isRoot){
+            final File rootKeystoreFolder = new File(PATH_ROOT);
+            File rootKeystoreFile = getLatestKeystore(rootKeystoreFolder, ROOT_KEYSTORE);
+            if(!rootKeystoreFile.exists()) {
+                generateRootKey(rootKeystoreFile);
+            }
+
+            try (InputStream rootKeystoreInputStream = Files.newInputStream(rootKeystoreFile.toPath())) {
+
+                KeyStore ks = KeyStore.getInstance(KEYSTORE_TYPE);
+                ks.load(rootKeystoreInputStream, password);
+                String alias = getAlias(ks, password);
+                X509Certificate cert = (X509Certificate) ks.getCertificate(alias);
+                Certificate[] chain = ks.getCertificateChain(alias);
+
+                issuerPrivateKey = (PrivateKey) ks.getKey(alias, password);
+                issuerDn = new JcaX509CertificateHolder(cert).getSubject();
+                root = chain[0];
+            }
         }
 
-        LogUtil.info(getClass().getName(), "latest file : " + rootKeystoreFile.getName());
-
-        try (InputStream rootKeystoreInputStream = Files.newInputStream(rootKeystoreFile.toPath())) {
-
-            final PublicKey subjectPublicKey = generatedKeyPair.getPublic();
-
-            KeyStore ks = KeyStore.getInstance(KEYSTORE_TYPE);
-            ks.load(rootKeystoreInputStream, password);
-            String alias = getAlias(ks, password);
-            X509Certificate cert = (X509Certificate) ks.getCertificate(alias);
-            Certificate[] chain = ks.getCertificateChain(alias);
-
-            PrivateKey issuerPrivateKey = (PrivateKey) ks.getKey(alias, password);
-            X500Name issuerDn = new JcaX509CertificateHolder(cert).getSubject();
-            final Certificate root = chain[0];
-
-            Certificate certificate = certificateSign(issuerPrivateKey, issuerDn, subjectPublicKey, subjectDn);
-
-            storeToPKCS12(userKeystoreFile, certificate, generatedKeyPair.getPrivate(), root);
-        }
+        Certificate certificate = certificateSign(issuerPrivateKey, issuerDn, subjectPublicKey, subjectDn);
+        storeToPKCS12(userKeystoreFile, certificate, generatedKeyPair.getPrivate(), root);
     }
 
     default Certificate certificateSign(PrivateKey issuerPrivateKey, X500Name issuerDnName, PublicKey subjectPublicKey, String subjectDN)
@@ -286,7 +279,7 @@ public interface PKCS12Utils {
         try (PdfReader reader = new PdfReader(tempFile);
              OutputStream fos = Files.newOutputStream(dest.toPath())) {
 
-            PdfSigner signer = new PdfSigner(reader, fos, new StampingProperties());
+            PdfSigner signer = new PdfSigner(reader, fos, new StampingProperties().useAppendMode());
 
             signer.setFieldName(name);
             signer.setSignDate(Calendar.getInstance());
@@ -298,20 +291,16 @@ public interface PKCS12Utils {
 
             // Sign the document using the detached mode, CMS or CAdES equivalent.
             signer.signDetached(digest, pks, chain, crlList, ocspClient, tsaClient, estimatedSize, subFilter);
-
-//            if (tempFile.delete()) {
-//                LogUtil.debug(getClass().getName(), "Temp file [" + tempFile.getAbsolutePath() + "] has been deleted");
-//            }
         }
     }
 
-    default boolean isSigned(File pdfFile, String signatureName) throws IOException {
+    default boolean isSigned(File pdfFile, String userFullName) throws IOException {
         try (PdfReader pdfReader = new PdfReader(pdfFile);
              PdfDocument pdfDocument = new PdfDocument(pdfReader)) {
 
             SignatureUtil signatureUtil = new SignatureUtil(pdfDocument);
             for (String name : signatureUtil.getSignatureNames()) {
-                if (name.equals(signatureName)) {
+                if (name.equals(userFullName)) {
                     return true;
                 }
             }
@@ -338,6 +327,10 @@ public interface PKCS12Utils {
              PdfDocument pdfDocument = new PdfDocument(reader, writer)) {
             PdfAcroForm acroForm = PdfAcroForm.getAcroForm(pdfDocument, true);
             acroForm.removeField(signatureName);
+        }
+
+        if(tempFile.delete()) {
+            LogUtil.debug(getClass().getName(), "Temp file [" + tempFile.getAbsolutePath() + "] has been deleted");
         }
 
     }

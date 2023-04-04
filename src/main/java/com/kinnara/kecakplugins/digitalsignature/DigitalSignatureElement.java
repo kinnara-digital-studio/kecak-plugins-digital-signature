@@ -150,11 +150,11 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
                     generateUserKey(userKeystore, password, userFullName);
                 }
 
-                final Certificate[] certifcateChain = getCertificateChain(userKeystore, password);
+                final Certificate[] certificateChain = getCertificateChain(userKeystore, password);
                 final PrivateKey privateKey = getPrivateKey(userKeystore, password);
                 final Provider securityProvider = getSecurityProvider();
 
-                signPdf(userFullName, pdfFile, pdfFile, certifcateChain, privateKey, DigestAlgorithms.SHA256, securityProvider.getName(), PdfSigner.CryptoStandard.CMS,
+                signPdf(userFullName, pdfFile, pdfFile, certificateChain, privateKey, DigestAlgorithms.SHA256, securityProvider.getName(), PdfSigner.CryptoStandard.CMS,
                         getReason(formData), getOrganization(), null, null, null, 0);
             }
         } catch (IOException | DigitalCertificateException | WriterException | ParseException |
@@ -332,12 +332,11 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
                 .orElse("");
     }
 
-
     /**
+     *
      * @param userKeystore
      * @param pass
      * @param userFullname
-     * @return keystore file
      * @throws NoSuchAlgorithmException
      * @throws CertificateException
      * @throws KeyStoreException
@@ -350,7 +349,7 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
     public void generateUserKey(File userKeystore, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException, UnrecoverableKeyException, DigitalCertificateException {
         KeyPair generatedKeyPair = generateKeyPair();
         String subjectDn = getDn(userFullname, getOrganizationalUnit(), getOrganization(), getLocality(), getStateOrProvince(), getCountry());
-        generateUserPKCS12(userKeystore, pass, generatedKeyPair, subjectDn);
+        generatePKCS12(userKeystore, pass, generatedKeyPair, subjectDn, false);
     }
 
     protected boolean overrideSignature() {
