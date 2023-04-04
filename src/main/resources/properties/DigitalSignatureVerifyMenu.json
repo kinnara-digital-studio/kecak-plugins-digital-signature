@@ -1,6 +1,6 @@
 [
   {
-    "title":"Verify PDF",
+    "title":"@@digital.signature.verifymenu@@",
     "properties": [
       {
         "name": "id",

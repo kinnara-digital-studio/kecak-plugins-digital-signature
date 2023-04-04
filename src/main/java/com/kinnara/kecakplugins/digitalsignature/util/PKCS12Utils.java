@@ -44,6 +44,8 @@ public interface PKCS12Utils {
     String KEYSTORE_TYPE = "pkcs12";
     String SIGNATURE_ALGORITHM = "SHA256WithRSA";
 
+    String DATETIME_FORMAT = "yyyyMMddHHmmss";
+
     /**
      * @param keystoreFile
      * @param certificate
@@ -85,7 +87,6 @@ public interface PKCS12Utils {
         }
     }
 
-
     default void generateRootKey(File certificateFile) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException, UnrecoverableKeyException, DigitalCertificateException {
         KeyPair generatedKeyPair = generateKeyPair();
         String subjectDn = getDn("Root Kecak", "Kecak", "Kecak.org", "ID", "West Java", "Bandung");
@@ -123,7 +124,6 @@ public interface PKCS12Utils {
             if(!rootKeystoreFile.exists()) {
                 generateRootKey(rootKeystoreFile);
             }
-            LogUtil.info(getClass().getName(), "latest file : " + rootKeystoreFile.getName());
 
             try (InputStream rootKeystoreInputStream = Files.newInputStream(rootKeystoreFile.toPath())) {
 
@@ -133,7 +133,6 @@ public interface PKCS12Utils {
                 X509Certificate cert = (X509Certificate) ks.getCertificate(alias);
                 Certificate[] chain = ks.getCertificateChain(alias);
 
-                issuerPrivateKey = (PrivateKey) ks.getKey(alias, password);
                 issuerPrivateKey = (PrivateKey) ks.getKey(alias, password);
                 issuerDn = new JcaX509CertificateHolder(cert).getSubject();
                 root = chain[0];
@@ -198,12 +197,12 @@ public interface PKCS12Utils {
     }
 
     default File getPathCertificateName(File containerFolder, String filename) {
-        String timeStamp = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
+        final Date now = new Date();
+        final String timeStamp = new SimpleDateFormat(DATETIME_FORMAT).format(now);
         return new File(containerFolder.getAbsolutePath() + "/" + timeStamp + "_" + filename);
     }
 
     /**
-     *
      * @param folder
      * @param filename
      * @return
@@ -214,7 +213,7 @@ public interface PKCS12Utils {
         }
 
         return Optional.ofNullable(folder.listFiles())
-                .map(files -> Arrays.stream(files))
+                .map(Arrays::stream)
                 .orElseGet(Stream::empty)
                 .filter(file -> file.getName().endsWith("_" + filename))
                 .max(Comparator.comparing(File::getName))
@@ -289,11 +288,12 @@ public interface PKCS12Utils {
     }
 
     default void signPdf(String name, File src, File dest, Certificate[] chain, PrivateKey pk,
-                        String digestAlgorithm, String provider, PdfSigner.CryptoStandard subFilter,
-                        String reason, String location, Collection<ICrlClient> crlList,
-                        IOcspClient ocspClient, ITSAClient tsaClient, int estimatedSize) throws IOException, GeneralSecurityException {
+                         String digestAlgorithm, String provider, PdfSigner.CryptoStandard subFilter,
+                         String reason, String location, Collection<ICrlClient> crlList,
+                         IOcspClient ocspClient, ITSAClient tsaClient, int estimatedSize) throws IOException, GeneralSecurityException {
 
-        final File tempFile = new File(dest.getAbsolutePath() + ".temp");
+        final Date now = new Date();
+        final File tempFile = new File(dest.getAbsolutePath() + ".temp" + new SimpleDateFormat(DATETIME_FORMAT).format(now));
 
         try (PdfReader reader = new PdfReader(src);
              PdfWriter writer = new PdfWriter(tempFile);
@@ -318,9 +318,6 @@ public interface PKCS12Utils {
             // Sign the document using the detached mode, CMS or CAdES equivalent.
             signer.signDetached(digest, pks, chain, crlList, ocspClient, tsaClient, estimatedSize, subFilter);
         }
-        if(tempFile.delete()) {
-            LogUtil.debug(getClass().getName(), "Temp file [" + tempFile.getAbsolutePath() + "] has been deleted");
-        }
     }
 
     default boolean isSigned(File pdfFile, String userFullName) throws IOException {
@@ -335,6 +332,10 @@ public interface PKCS12Utils {
             }
         }
         return false;
+    }
+
+    default void eraseSignature(File file, String signatureName) throws IOException {
+        eraseSignature(file, file, signatureName);
     }
 
     default void eraseSignature(File src, File dest, String signatureName) throws IOException {

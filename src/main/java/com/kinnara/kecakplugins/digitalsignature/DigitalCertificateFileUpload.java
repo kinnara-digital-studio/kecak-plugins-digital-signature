@@ -101,16 +101,17 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
     }
 
     protected String getReason(FormData formData) {
-        String activityName = "Approval";
-
-        String activityId = formData.getActivityId();
-        if(!activityId.isEmpty()){
-            WorkflowManager wm = (WorkflowManager) WorkflowUtil.getApplicationContext().getBean("workflowManager");
-            WorkflowActivity activity = wm.getActivityById(activityId);
-            activityName = activity.getName();
-            LogUtil.info(getClassName(), "Activity Name : " + activityName);
+        final String propValue = getPropertyString("reason");
+        if(!propValue.isEmpty()) {
+            return propValue;
         }
-        return activityName;
+
+        WorkflowManager wm = (WorkflowManager) WorkflowUtil.getApplicationContext().getBean("workflowManager");
+        return Optional.of(formData)
+                .map(FormData::getActivityId)
+                .map(wm::getActivityById)
+                .map(WorkflowActivity::getName)
+                .orElse("");
     }
 
     /**

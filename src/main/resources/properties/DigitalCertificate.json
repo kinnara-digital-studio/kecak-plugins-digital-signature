@@ -39,6 +39,16 @@
         "type": "checkbox",
         "value" : "true",
         "options" : [{ "value" : "true", "label" : ""}]
+      },
+      {
+        "label" : "@@digital.signature.fields@@",
+        "type" : "header"
+      },
+      {
+        "name": "reason",
+        "label": "@@digital.signature.reason@@",
+        "description": "@@digital.signature.reason.desc@@",
+        "type": "textfield"
       }
     ]
   }

@@ -11,7 +11,6 @@ import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.geom.AffineTransform;
 import com.itextpdf.kernel.pdf.*;
 import com.itextpdf.kernel.pdf.canvas.PdfCanvas;
-import net.glxn.qrgen.javase.QRCode;
 import org.joget.commons.util.LogUtil;
 import org.joget.workflow.util.WorkflowUtil;
 import org.springframework.util.ResourceUtils;
@@ -92,20 +91,6 @@ public interface PdfUtil {
         final URL url = ResourceUtils.getURL(PATH_CERTIFICATE + "/" + username + "/signature.png");
         final File signatureFile = new File(url.getPath());
         return signatureFile;
-    }
-
-    default byte[] getQrCode(String qrString) throws IOException {
-        try (ByteArrayOutputStream stream = QRCode
-                .from(qrString)
-                .withSize(250, 250)
-                .stream();
-             ByteArrayInputStream bis = new ByteArrayInputStream(stream.toByteArray());) {
-
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ImageIO.write(ImageIO.read(bis), "png", baos);
-
-            return baos.toByteArray();
-        }
     }
 
     /**
