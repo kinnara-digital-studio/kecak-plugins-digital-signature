@@ -28,6 +28,7 @@ public class DigitalSignatureVerifyMenu extends UserviewMenu {
         final Map<String, Object> dataModel = new HashMap<>();
         final String template = "/templates/DigitalSignatureVerifyMenu.ftl";
         final String label = getLabel();
+        dataModel.put("className", getClassName());
         dataModel.put("label", label);
         final String htmlContent = pluginManager.getPluginFreeMarkerTemplate(dataModel, getClassName(), template, null);
         return htmlContent;
