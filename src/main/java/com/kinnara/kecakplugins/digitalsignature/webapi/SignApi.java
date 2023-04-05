@@ -16,15 +16,15 @@ import org.joget.workflow.util.WorkflowUtil;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.kecak.apps.exception.ApiException;
+import org.springframework.util.ResourceUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.ServletException;
+import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
+import java.net.URL;
 import java.nio.file.Files;
 import java.security.KeyPair;
 import java.security.KeyStoreException;
@@ -37,9 +37,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 public class SignApi extends ExtDefaultPlugin implements PluginWebSupport, PKCS12Utils {
+    public static String ZIP_NAME = "signedPDFBy";
     @Override
+
     public String getName() {
         return "Sign API";
     }
@@ -73,6 +77,12 @@ public class SignApi extends ExtDefaultPlugin implements PluginWebSupport, PKCS1
             LogUtil.info(getClass().getName(), "Executing Rest API [" + servletRequest.getRequestURI() + "] in method [" + servletRequest.getMethod() + "] contentType [" + servletRequest.getContentType() + "] as [" + WorkflowUtil.getCurrentUsername() + "]");
 
             final String userFullName = WorkflowUtil.getCurrentUserFullName();
+            servletResponse.setContentType("Content-type: text/zip");
+            servletResponse.setHeader("Content-Disposition",
+                    "attachment; filename="+ZIP_NAME+userFullName+".zip");
+
+            ServletOutputStream out = servletResponse.getOutputStream();
+            ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(out));
 
             FileStore.getFileMap().values().stream()
 
@@ -91,50 +101,38 @@ public class SignApi extends ExtDefaultPlugin implements PluginWebSupport, PKCS1
                     // make sure file exists
                     .filter(File::exists)
 
-//                    // collect stream as array of File
-//                    .toArray(File[]::new);
+                    // collect stream as array of File
                     .forEach(Try.onConsumer(pdfFile -> {
+                        // get / generate keystore
+                        String username = WorkflowUtil.getCurrentUsername();
 
-//                        LogUtil.info(getClass().getName(), "file :" + pdfFile.getAbsolutePath());
-//                        LogUtil.info(getClass().getName(), "email :" + userFullName);
-//
-//                        // get / generate keystore
-//                        File userKeystoreFile = new File("input_file.pdf");
-//                        generateUserKey(userKeystoreFile, getPassword(), userFullName);
-//                        startSign(userKeystoreFile, pdfFile, userFullName, "Sign", DEFAULT_DN_ORG);
+                        URL baseUrl = ResourceUtils.getURL(PATH_USER_CERTIFICATE + "/" + username);
+                        final File folder = new File(baseUrl.getPath());
+                        final File userKeystoreFile = getLatestKeystore(folder, "certificate." + KEYSTORE_TYPE);
 
-                        servletResponse.setContentType("application/pdf");
+                        char[] pass = getPassword();
+                        if (!userKeystoreFile.exists()) {
+                            generateUserKey(userKeystoreFile, pass, userFullName);
+                        }
 
+                        //sign PDF
+                        startSign(userKeystoreFile, pdfFile, userFullName, "Sign", DEFAULT_DN_ORG);
                         final String name = pdfFile.getName();
-                        servletResponse.setHeader("Content-Disposition", "attachment; filename=" + name + "; filename*=UTF-8''" + name);
 
-                        byte[] bytes = Files.readAllBytes(pdfFile.toPath());
-                        servletResponse.getOutputStream().write(bytes);
+                        //write file to ZIP output stream
+                        zos.putNextEntry(new ZipEntry(name));
+                        FileInputStream fis = new FileInputStream(pdfFile);
+                        BufferedInputStream bis = new BufferedInputStream(fis);
+
+                        int data = 0;
+                        while ((data = bis.read()) != -1) {
+                            zos.write(data);
+                        }
+                        bis.close();
+                        zos.closeEntry();
                     }));
 
-//            for (File pdfFile : filesToSign) {
-//
-////            String fileToSign = servletRequest.getParameter("file");
-//                String userFullname = servletRequest.getHeader("email");
-//
-//
-//                LogUtil.info(getClass().getName(), "file :" + pdfFile.getAbsolutePath());
-//                LogUtil.info(getClass().getName(), "email :" + userFullname);
-//
-////                File pdfFile = new File(fileToSign);
-//                File userKeystoreFile = new File("input_file.pdf");
-//
-//                //SIGN PDF
-//                generateUserKey(userKeystoreFile, getPassword(), userFullname);
-//                startSign(userKeystoreFile, pdfFile, userFullname, "Sign", DEFAULT_DN_ORG);
-//            }
-
-//            final JSONObject responseBody = new JSONObject();
-////            responseBody.put("signedFile", pdfFile);
-//            responseBody.put("status", false);
-//            responseBody.put("message", "UNDER DEVELOPMENT");
-//
-//            servletResponse.getWriter().write(responseBody.toString());
+            zos.close();
         } catch (ApiException e) {
             LogUtil.error(getClass().getName(), e, e.getMessage());
             servletResponse.sendError(e.getErrorCode(), e.getMessage());
@@ -145,14 +143,5 @@ public class SignApi extends ExtDefaultPlugin implements PluginWebSupport, PKCS1
         KeyPair generatedKeyPair = generateKeyPair();
         String subjectDn = getDn(userFullname, DEFAULT_DN_ORG_UNIT, DEFAULT_DN_ORG, DEFAULT_DN_LOCALITY, DEFAULT_DN_STATE, DEFAULT_DN_COUNTRY);
         generatePKCS12(certificateFile, pass, generatedKeyPair, subjectDn, false);
-    }
-
-    protected String[] getTempFilePath(String elementId) {
-        return Optional.of(elementId)
-                .map(Try.onFunction(FileStore::getFiles))
-                .map(Arrays::stream)
-                .orElseGet(Stream::empty)
-                .map(FileManager::storeFile)
-                .toArray(String[]::new);
     }
 }
