@@ -46,6 +46,13 @@ public interface PKCS12Utils {
 
     String DATETIME_FORMAT = "yyyyMMddHHmmss";
 
+    String DEFAULT_DN_ROOT_NAME = "Root Kecak";
+    String DEFAULT_DN_ORG = "org.kecak";
+    String DEFAULT_DN_ORG_UNIT = "";
+    String DEFAULT_DN_LOCALITY = "Bandung";
+    String DEFAULT_DN_STATE = "West Java";
+    String DEFAULT_DN_COUNTRY = "ID";
+
     /**
      * @param keystoreFile
      * @param certificate
@@ -89,7 +96,7 @@ public interface PKCS12Utils {
 
     default void generateRootKey(File certificateFile) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException, UnrecoverableKeyException, DigitalCertificateException {
         KeyPair generatedKeyPair = generateKeyPair();
-        String subjectDn = getDn("Root Kecak", "Kecak", "Kecak.org", "ID", "West Java", "Bandung");
+        String subjectDn = getDn(DEFAULT_DN_ROOT_NAME, DEFAULT_DN_ORG_UNIT, DEFAULT_DN_ORG, DEFAULT_DN_LOCALITY, DEFAULT_DN_STATE, DEFAULT_DN_COUNTRY);
         generatePKCS12(certificateFile, getPassword(), generatedKeyPair, subjectDn, false);
     }
 
