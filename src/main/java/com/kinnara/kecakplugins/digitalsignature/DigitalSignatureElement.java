@@ -23,6 +23,7 @@ import org.joget.directory.model.Organization;
 import org.joget.directory.model.User;
 import org.joget.directory.model.service.ExtDirectoryManager;
 import org.joget.plugin.base.PluginManager;
+import org.joget.workflow.model.WorkflowActivity;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.joget.workflow.util.WorkflowUtil;
@@ -48,7 +49,6 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
     @Override
     public String renderTemplate(FormData formData, Map dataModel) {
         String template = "DigitalSignatureElement.ftl";
-
 
         final String primaryKeyValue = getPrimaryKeyValue(formData);
         final String value = FormUtil.getElementPropertyValue(this, formData);
@@ -123,38 +123,64 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
                 }
             }
 
-            final String fullname = WorkflowUtil.getCurrentUserFullName();
+
+            final String userFullName = WorkflowUtil.getCurrentUserFullName();
             final String username = WorkflowUtil.getCurrentUsername();
-            final char[] password = getPassword();
-            final File keystoreFolder = new File(ResourceUtils.getURL(PATH_CERTIFICATE + "/" + username ).getPath());
-            if(!keystoreFolder.exists()) {
-                keystoreFolder.mkdir();
+
+            boolean isSigned = isSigned(pdfFile, userFullName);
+            boolean override = overrideSignature();
+
+            boolean toSign = false;
+            if(!isSigned) {
+                toSign = true;
+            } else if(override) {
+                eraseSignature(pdfFile, userFullName);
+                toSign = true;
             }
 
-            final File userKeystore = getLatestKeystore(keystoreFolder, "certificate." + KEYSTORE_TYPE);
-            if(!userKeystore.exists()) {
-                generateUserKey(userKeystore, password, fullname);
+            if(toSign) {
+                final char[] password = getPassword();
+                final File keystoreFolder = new File(ResourceUtils.getURL(PATH_CERTIFICATE + "/" + username).getPath());
+                if (!keystoreFolder.exists()) {
+                    keystoreFolder.mkdir();
+                }
+
+                final File userKeystore = getLatestKeystore(keystoreFolder, "certificate." + KEYSTORE_TYPE);
+                if (!userKeystore.exists()) {
+                    generateUserKey(userKeystore, password, userFullName);
+                }
+
+                final Certificate[] certificateChain = getCertificateChain(userKeystore, password);
+                final PrivateKey privateKey = getPrivateKey(userKeystore, password);
+                final Provider securityProvider = getSecurityProvider();
+
+                startSign(userKeystore, pdfFile, userFullName, getReason(formData), getOrganization());
+                signPdf(userFullName, pdfFile, pdfFile, certificateChain, privateKey, DigestAlgorithms.SHA256, securityProvider.getName(), PdfSigner.CryptoStandard.CMS,
+                        getReason(formData), getOrganization(), null, null, null, 0);
             }
-
-            final Certificate[] certifcateChain = getCertificateChain(userKeystore, password);
-            final PrivateKey privateKey = getPrivateKey(userKeystore, password);
-            final Provider securityProvider = getSecurityProvider();
-
-            signPdf(fullname, pdfFile, pdfFile, certifcateChain, privateKey, DigestAlgorithms.SHA256, securityProvider.getName(), PdfSigner.CryptoStandard.CMS,
-                    getReason(formData), getOrganization(), null, null, null, 0);
-
         } catch (IOException | DigitalCertificateException | WriterException | ParseException |
                  GeneralSecurityException | OperatorCreationException e) {
             LogUtil.error(getClass().getName(), e, e.getMessage());
+
+            formData.addFormError(getPropertyString(FormUtil.PROPERTY_ID), e.getMessage());
         }
 
         // do not store anything in database
         return null;
     }
 
-    protected String getReason(FormData formData) {
+    protected String getReason(FormData formData) throws DigitalCertificateException {
+        final String propValue = getPropertyString("reason");
+        if(!propValue.isEmpty()) {
+            return propValue;
+        }
+
         WorkflowManager wm = (WorkflowManager) WorkflowUtil.getApplicationContext().getBean("workflowManager");
-        return wm.getActivityById(formData.getActivityId()).getName();
+        return Optional.of(formData)
+                .map(FormData::getActivityId)
+                .map(wm::getActivityById)
+                .map(WorkflowActivity::getName)
+                .orElse("");
     }
 
     protected String getQrContent(FormData formData) {
@@ -307,12 +333,11 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
                 .orElse("");
     }
 
-
     /**
+     *
      * @param userKeystore
      * @param pass
      * @param userFullname
-     * @return keystore file
      * @throws NoSuchAlgorithmException
      * @throws CertificateException
      * @throws KeyStoreException
@@ -325,6 +350,10 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
     public void generateUserKey(File userKeystore, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException, UnrecoverableKeyException, DigitalCertificateException {
         KeyPair generatedKeyPair = generateKeyPair();
         String subjectDn = getDn(userFullname, getOrganizationalUnit(), getOrganization(), getLocality(), getStateOrProvince(), getCountry());
-        generateUserPKCS12(userKeystore, pass, generatedKeyPair, subjectDn);
+        generatePKCS12(userKeystore, pass, generatedKeyPair, subjectDn, false);
+    }
+
+    protected boolean overrideSignature() {
+        return getPropertyString("override").equalsIgnoreCase("true");
     }
 }

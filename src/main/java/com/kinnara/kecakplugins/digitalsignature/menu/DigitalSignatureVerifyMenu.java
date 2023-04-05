@@ -74,6 +74,6 @@ public class DigitalSignatureVerifyMenu extends UserviewMenu {
 
     @Override
     public String getPropertyOptions() {
-        return AppUtil.readPluginResource(getClass().getName(), "/properties/DigitalSignatureVerifyMenu.json");
+        return AppUtil.readPluginResource(getClass().getName(), "/properties/DigitalSignatureVerifyMenu.json", null, true, "/message/DigitalSignature");
     }
 }

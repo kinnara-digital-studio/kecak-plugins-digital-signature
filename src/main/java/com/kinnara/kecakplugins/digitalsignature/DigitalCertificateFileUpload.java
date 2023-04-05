@@ -9,6 +9,8 @@ import com.kinnarastudio.commons.Try;
 import com.kinnarastudio.commons.jsonstream.JSONStream;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.OperatorCreationException;
+import org.enhydra.shark.xpdl.elements.Activity;
+import org.enhydra.shark.xpil.XPDLActivityDocument;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.lib.FileUpload;
 import org.joget.apps.form.model.*;
@@ -21,6 +23,7 @@ import org.joget.directory.model.Organization;
 import org.joget.directory.model.User;
 import org.joget.directory.model.service.ExtDirectoryManager;
 import org.joget.plugin.base.PluginManager;
+import org.joget.workflow.model.WorkflowActivity;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.joget.workflow.util.WorkflowUtil;
 import org.json.JSONArray;
@@ -83,25 +86,8 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
                     generateUserKey(userKeystoreFile, pass, userFullname);
                 }
 
-                try (InputStream is = Files.newInputStream(userKeystoreFile.toPath())) {
-                    KeyStore ks = KeyStore.getInstance(KEYSTORE_TYPE);
-                    ks.load(is, pass);
-
-                    String alias = getAlias(ks, pass);
-                    Certificate[] chain = ks.getCertificateChain(alias);
-                    PrivateKey privateKey = (PrivateKey) ks.getKey(alias, pass);
-                    if (privateKey == null) {
-                        throw new DigitalCertificateException("Private key is not found in alias [" + alias + "] keystore [" + userKeystoreFile.getAbsolutePath() + "]");
-                    }
-
-                    BouncyCastleProvider provider = new BouncyCastleProvider();
-                    Security.addProvider(provider);
-
-                    signPdf(userFullname, pdfFile, pdfFile, chain, privateKey, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
-                            getReason(formData), getOrganization(), null, null, null, 0);
-
-                    LogUtil.info(getClassName(), "Document [" + pdfFile.getName() + "] has been signed by [" + username + "]");
-                }
+                startSign(userKeystoreFile, pdfFile, userFullname, getReason(formData),getOrganization());
+                LogUtil.info(getClassName(), "Document [" + pdfFile.getName() + "] has been signed by [" + userFullname + "]");
             }
 
             return super.formatData(formData);
@@ -115,8 +101,17 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
     }
 
     protected String getReason(FormData formData) {
+        final String propValue = getPropertyString("reason");
+        if(!propValue.isEmpty()) {
+            return propValue;
+        }
+
         WorkflowManager wm = (WorkflowManager) WorkflowUtil.getApplicationContext().getBean("workflowManager");
-        return wm.getActivityById(formData.getActivityId()).getName();
+        return Optional.of(formData)
+                .map(FormData::getActivityId)
+                .map(wm::getActivityById)
+                .map(WorkflowActivity::getName)
+                .orElse("");
     }
 
     /**
@@ -136,7 +131,7 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
     public void generateUserKey(File certificateFile, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException, UnrecoverableKeyException, DigitalCertificateException {
         KeyPair generatedKeyPair = generateKeyPair();
         String subjectDn = getDn(userFullname, getOrganizationalUnit(), getOrganization(), getLocality(), getStateOrProvince(), getCountry());
-        generateUserPKCS12(certificateFile, pass, generatedKeyPair, subjectDn);
+        generatePKCS12(certificateFile, pass, generatedKeyPair, subjectDn, false);
     }
 
     protected String getStateOrProvince() {

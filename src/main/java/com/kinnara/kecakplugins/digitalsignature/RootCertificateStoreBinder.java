@@ -44,7 +44,6 @@ public class RootCertificateStoreBinder extends FormBinder implements FormStoreE
 
             //get private key
             final PrivateKey privateKey = getPemPrivateKey(FileManager.getBaseDirectory() + "/" + pathKey);
-
             final File rootKeystore = getPathCertificateName(new File(PATH_ROOT), ROOT_KEYSTORE);
             storeToPKCS12(rootKeystore, certificate, privateKey, null);
 
