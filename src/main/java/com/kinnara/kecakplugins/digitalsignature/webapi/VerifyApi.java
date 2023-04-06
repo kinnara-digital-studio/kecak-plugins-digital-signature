@@ -38,9 +38,7 @@ import java.util.zip.ZipEntry;
 
 public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unclutter, PKCS12Utils {
     private KeyStore ks;
-    public String PATH_ROOT = "wflow/app_certificate/root";
     public Map<String, Object> signatureData = new HashMap<>();
-    public Map<String, String> rootData = new HashMap<>();
     public List<Map<String, String>> rootList = new ArrayList<>();
     public List<Map<String, Object>> data = new ArrayList<>();
 
@@ -114,14 +112,14 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
         SignatureUtil signUtil = new SignatureUtil(pdfDoc);
         List<String> names = signUtil.getSignatureNames();
 
-
         LogUtil.info(getClass().getName(), path);
         for (String name : names) {
             signatureData = new HashMap<>();
+            signatureData.put("signatureName", name);
+
             LogUtil.info(getClass().getName(), "===== " + name + " =====");
             verifySignature(signUtil, name);
 
-            signatureData.put("signatureName", name);
             data.add(signatureData);
         }
     }
@@ -148,7 +146,7 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
 
         //TODO : loop rootFile.filepath() to verify certificate
         Calendar finalCal = cal;
-        File rootCert = Arrays.stream(rootFolder.listFiles()).filter(Try.onPredicate(rootFile -> {
+        Arrays.stream(rootFolder.listFiles()).filter(Try.onPredicate(rootFile -> {
 
             InputStream rootKeystoreInputStream = Files.newInputStream(rootFile.toPath());
 
@@ -246,7 +244,7 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
         LogUtil.info(getClass().getName(), "Valid from: " + date_format.format(cert.getNotBefore()));
         LogUtil.info(getClass().getName(), "Valid to: " + date_format.format(cert.getNotAfter()));
 
-        rootData = new HashMap<>();
+        Map<String, String> rootData = new HashMap<>();
         rootData.put("issuer", cert.getIssuerDN().toString());
         rootData.put("subject", cert.getSubjectDN().toString());
         rootData.put("validFrom", date_format.format(cert.getNotBefore()));
