@@ -119,7 +119,7 @@ public class SignApi extends ExtDefaultPlugin implements PluginWebSupport, PKCS1
                         startSign(userKeystoreFile, pdfFile, userFullName, "Sign", DEFAULT_DN_ORG);
                         final String name = pdfFile.getName();
 
-                        //write file to ZIP output stream
+                        //write file to output stream
                         zos.putNextEntry(new ZipEntry(name));
                         FileInputStream fis = new FileInputStream(pdfFile);
                         BufferedInputStream bis = new BufferedInputStream(fis);
