@@ -20,12 +20,9 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.joget.commons.util.LogUtil;
 import org.joget.commons.util.SecurityUtil;
 import org.joget.commons.util.SetupManager;
-import org.joget.workflow.util.WorkflowUtil;
-import org.springframework.util.ResourceUtils;
 
 import java.io.*;
 import java.math.BigInteger;
-import java.net.URL;
 import java.nio.file.Files;
 import java.security.*;
 import java.security.cert.Certificate;
@@ -270,7 +267,7 @@ public interface PKCS12Utils {
         return generator.generateKeyPair();
     }
 
-    default void startSign(File userKeystoreFile, File pdfFile, String userFullname, String reason, String organization) throws FileNotFoundException {
+    default void signPdf(File userKeystoreFile, File pdfFile, String userFullname, String reason, String organization) throws IOException, GeneralSecurityException, DigitalCertificateException {
         char[] pass = getPassword();
         try (InputStream is = Files.newInputStream(userKeystoreFile.toPath())) {
             KeyStore ks = KeyStore.getInstance(KEYSTORE_TYPE);
@@ -289,20 +286,18 @@ public interface PKCS12Utils {
             signPdf(userFullname, pdfFile, pdfFile, chain, privateKey, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
                     reason, organization, null, null, null, 0);
 
-        } catch (IOException | GeneralSecurityException | DigitalCertificateException e) {
-            LogUtil.error(getClass().getName(), e, e.getMessage());
         }
     }
 
-    default void signPdf(String name, File src, File dest, Certificate[] chain, PrivateKey pk,
+    default void signPdf(String name, File sourcePdfFile, File destPdfFile, Certificate[] chain, PrivateKey pk,
                          String digestAlgorithm, String provider, PdfSigner.CryptoStandard subFilter,
                          String reason, String location, Collection<ICrlClient> crlList,
                          IOcspClient ocspClient, ITSAClient tsaClient, int estimatedSize) throws IOException, GeneralSecurityException {
 
         final Date now = new Date();
-        final File tempFile = new File(dest.getAbsolutePath() + ".temp" + new SimpleDateFormat(DATETIME_FORMAT).format(now));
+        final File tempFile = new File(destPdfFile.getAbsolutePath() + ".temp" + new SimpleDateFormat(DATETIME_FORMAT).format(now));
 
-        try (PdfReader reader = new PdfReader(src);
+        try (PdfReader reader = new PdfReader(sourcePdfFile);
              PdfWriter writer = new PdfWriter(tempFile);
              PdfDocument document = new PdfDocument(reader, writer)) {
 
@@ -310,7 +305,7 @@ public interface PKCS12Utils {
         }
 
         try (PdfReader reader = new PdfReader(tempFile);
-             OutputStream fos = Files.newOutputStream(dest.toPath())) {
+             OutputStream fos = Files.newOutputStream(destPdfFile.toPath())) {
 
             PdfSigner signer = new PdfSigner(reader, fos, new StampingProperties().useAppendMode());
 

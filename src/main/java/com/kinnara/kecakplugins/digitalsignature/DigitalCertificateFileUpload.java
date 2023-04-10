@@ -1,16 +1,10 @@
 package com.kinnara.kecakplugins.digitalsignature;
 
-import com.itextpdf.forms.PdfAcroForm;
-import com.itextpdf.kernel.pdf.*;
-import com.itextpdf.signatures.*;
 import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateException;
 import com.kinnara.kecakplugins.digitalsignature.util.PKCS12Utils;
 import com.kinnarastudio.commons.Try;
 import com.kinnarastudio.commons.jsonstream.JSONStream;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.OperatorCreationException;
-import org.enhydra.shark.xpdl.elements.Activity;
-import org.enhydra.shark.xpil.XPDLActivityDocument;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.lib.FileUpload;
 import org.joget.apps.form.model.*;
@@ -32,10 +26,7 @@ import org.springframework.util.ResourceUtils;
 
 import java.io.*;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.security.*;
-import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.text.ParseException;
 import java.util.*;
@@ -86,7 +77,7 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
                     generateUserKey(userKeystoreFile, pass, userFullname);
                 }
 
-                startSign(userKeystoreFile, pdfFile, userFullname, getReason(formData),getOrganization());
+                signPdf(userKeystoreFile, pdfFile, userFullname, getReason(formData),getOrganization());
                 LogUtil.info(getClassName(), "Document [" + pdfFile.getName() + "] has been signed by [" + userFullname + "]");
             }
 

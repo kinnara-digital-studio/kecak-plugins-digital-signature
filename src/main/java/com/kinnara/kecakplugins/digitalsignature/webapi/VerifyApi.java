@@ -6,9 +6,11 @@ import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfReader;
 import com.itextpdf.signatures.*;
 import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateException;
+import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateVerificationException;
 import com.kinnara.kecakplugins.digitalsignature.util.PKCS12Utils;
 import com.kinnara.kecakplugins.digitalsignature.util.Unclutter;
 import com.kinnarastudio.commons.Try;
+import org.javatuples.Pair;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.commons.util.FileManager;
 import org.joget.commons.util.FileStore;
@@ -17,30 +19,23 @@ import org.joget.plugin.base.ExtDefaultPlugin;
 import org.joget.plugin.base.PluginManager;
 import org.joget.plugin.base.PluginWebSupport;
 import org.joget.workflow.util.WorkflowUtil;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.kecak.apps.exception.ApiException;
-import org.springframework.util.ResourceUtils;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
-import java.net.URL;
 import java.nio.file.Files;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.cert.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.zip.ZipEntry;
+import java.util.stream.Stream;
 
 public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unclutter, PKCS12Utils {
-    private KeyStore ks;
-    public Map<String, Object> signatureData = new HashMap<>();
-    public List<Map<String, String>> rootList = new ArrayList<>();
-    public List<Map<String, Object>> data = new ArrayList<>();
 
     @Override
     public String getName() {
@@ -63,20 +58,21 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
     public void webService(HttpServletRequest servletRequest, HttpServletResponse servletResponse) throws ServletException, IOException {
         try {
             final String method = servletRequest.getMethod();
-            if(!"POST".equalsIgnoreCase(method)) {
+            if (!"POST".equalsIgnoreCase(method)) {
                 throw new ApiException(HttpServletResponse.SC_METHOD_NOT_ALLOWED, "Unsupported method [" + method + "]");
             }
 
-            // TODO : verify
-
             LogUtil.info(getClass().getName(), "Executing Rest API [" + servletRequest.getRequestURI() + "] in method [" + servletRequest.getMethod() + "] contentType [" + servletRequest.getContentType() + "] as [" + WorkflowUtil.getCurrentUsername() + "]");
-            FileStore.getFileMap().values().stream()
+
+            final List<Map<String, Object>> data = FileStore.getFileMap().values().stream()
 
                     // unbox deep stream
                     .flatMap(Arrays::stream)
 
                     // store to temp folder (app_tempfile)
                     .map(FileManager::storeFile)
+
+                    .findFirst()
 
                     // construct path to file
                     .map(path -> FileManager.getBaseDirectory() + "/" + path)
@@ -87,14 +83,15 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
                     // make sure file exists
                     .filter(File::exists)
 
-                    // collect stream as array of File
-                    .forEach(Try.onConsumer(pdfFile -> {
-                        //verify PDF
-                        verifySignatures(pdfFile.getAbsolutePath());
-                    }));
+                    //verify PDF
+                    .map(Try.onFunction(this::verifySignatures))
+
+                    // if any error is found, return empty list
+                    .orElse(Collections.emptyList());
 
             final JSONObject responseBody = new JSONObject();
             responseBody.put("Data", data);
+
 //            responseBody.put("message", "UNDER DEVELOPMENT");
             servletResponse.setStatus(HttpServletResponse.SC_OK);
             servletResponse.getWriter().write(responseBody.toString());
@@ -107,35 +104,43 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
         }
     }
 
-    public void verifySignatures(String path) throws IOException, GeneralSecurityException, DigitalCertificateException, ApiException {
-        PdfDocument pdfDoc = new PdfDocument(new PdfReader(path));
+    public List<Map<String, Object>> verifySignatures(File pdfFile) throws IOException, GeneralSecurityException, DigitalCertificateException, ApiException, DigitalCertificateVerificationException {
+        PdfDocument pdfDoc = new PdfDocument(new PdfReader(pdfFile));
         SignatureUtil signUtil = new SignatureUtil(pdfDoc);
         List<String> names = signUtil.getSignatureNames();
 
-        LogUtil.info(getClass().getName(), path);
+        final List<Map<String, Object>> data = new ArrayList<>();
         for (String name : names) {
-            signatureData = new HashMap<>();
-            signatureData.put("signatureName", name);
-
             LogUtil.info(getClass().getName(), "===== " + name + " =====");
-            verifySignature(signUtil, name);
 
+            final Map<String, Object> signatureData = verifySignature(signUtil, name);
             data.add(signatureData);
         }
+        return data;
     }
 
-    public PdfPKCS7 verifySignature(SignatureUtil signUtil, String name) throws GeneralSecurityException,
-            IOException, ApiException, DigitalCertificateException {
+    /**
+     * @param signUtil
+     * @param name
+     * @return
+     * @throws GeneralSecurityException
+     * @throws IOException
+     * @throws DigitalCertificateException
+     */
+    public Map<String, Object> verifySignature(SignatureUtil signUtil, String name) throws GeneralSecurityException,
+            IOException, DigitalCertificateException, DigitalCertificateVerificationException {
         PdfPKCS7 pkcs7 = getSignatureData(signUtil, name);
         Certificate[] certs = pkcs7.getSignCertificateChain();
 
         // Timestamp is a secure source of signature creation time,
         // because it's based on Time Stamping Authority service.
-        Calendar cal = pkcs7.getTimeStampDate();
+        final Calendar cal;
 
         // If there is no timestamp, use the current date
-        if (TimestampConstants.UNDEFINED_TIMESTAMP_DATE == cal) {
+        if (TimestampConstants.UNDEFINED_TIMESTAMP_DATE == pkcs7.getTimeStampDate()) {
             cal = Calendar.getInstance();
+        } else {
+            cal = pkcs7.getTimeStampDate();
         }
 
         // Check if the certificate chain, presented in the PDF, can be verified against
@@ -144,36 +149,50 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
         //get list of root
         File rootFolder = new File(PATH_ROOT);
 
-        //TODO : loop rootFile.filepath() to verify certificate
-        Calendar finalCal = cal;
-        Arrays.stream(rootFolder.listFiles()).filter(Try.onPredicate(rootFile -> {
+        final Map<String, Object> signatureData = new HashMap<>();
+        signatureData.put("signatureName", name);
 
-            InputStream rootKeystoreInputStream = Files.newInputStream(rootFile.toPath());
+        final List<VerificationException> finalError = new ArrayList<>();
 
-            char[] password = getPassword();
-            ks = KeyStore.getInstance(KEYSTORE_TYPE);
-            ks.load(rootKeystoreInputStream, password);
-            List<VerificationException> errors = CertificateVerification.verifyCertificates(certs, ks, finalCal);
-            if (errors.size() == 0) {
-                LogUtil.info(getClass().getName(), "Certificates verified against the KeyStore");
-                signatureData.put("keyStoreVerification", "true");
-                signatureData.put("keyStoreVerificationMessage", "Certificates verified against the KeyStore");
-            } else {
-                LogUtil.info(getClass().getName(), errors.toString());
-                signatureData.put("keyStoreVerification", "false");
-                signatureData.put("keyStoreVerificationMessage", errors.toString());
-            }
-            return errors.isEmpty();
-        })).findFirst().orElseThrow(() -> new DigitalCertificateException("No Valid Root Certificate"));
+        File rootKeystore = Optional.ofNullable(rootFolder.listFiles())
+                .map(Arrays::stream)
+                .orElse(Stream.empty())
+                .filter(f -> f.getName().endsWith("_" + ROOT_KEYSTORE))
+                .sorted(Comparator.comparing(File::getName))
+                .map(Try.onFunction(file -> {
+                    try(InputStream rootKeystoreInputStream = Files.newInputStream(file.toPath())) {
+                        char[] password = getPassword();
+                        final KeyStore ks = KeyStore.getInstance(KEYSTORE_TYPE);
+                        ks.load(rootKeystoreInputStream, password);
+                        return Pair.with(file, ks);
+                    }
+                }))
+                .filter(Objects::nonNull)
+                .map(Try.onFunction(p -> {
+                    final List<VerificationException> errors = CertificateVerification.verifyCertificates(certs, p.getValue1(), cal);
+
+                    finalError.clear();
+                    finalError.addAll(errors);
+
+                    return Pair.with(p.getValue0(), errors);
+                }))
+                .filter(Objects::nonNull)
+                .filter(p -> p.getValue1().isEmpty())
+                .map(Pair::getValue0)
+                .findFirst()
+                .orElseThrow(() -> new DigitalCertificateVerificationException(finalError));
+
+        LogUtil.info(getClass().getName(), "Verified using root [" + rootKeystore.getName() +"]");
 
         // Find out if certificates were valid on the signing date, and if they are still valid today
-        rootList = new ArrayList<>();
+        final List<Map<String, String>> rootList = new ArrayList<>();
         for (int i = 0; i < certs.length; i++) {
             X509Certificate cert = (X509Certificate) certs[i];
             LogUtil.info(getClass().getName(), "=== Certificate " + i + " ===");
-            showCertificateInfo(cert, cal.getTime());
+            rootList.add(showCertificateInfo(cert, cal.getTime()));
         }
         signatureData.put("rootData", rootList);
+
         // Take the signing certificate
         X509Certificate signCert = (X509Certificate) certs[0];
 
@@ -186,8 +205,9 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
         LogUtil.info(getClass().getName(), "=== Checking validity of the document today ===");
         checkRevocation(pkcs7, signCert, issuerCert, new Date());
 
-        return pkcs7;
+        return signatureData;
     }
+
 
     public PdfPKCS7 getSignatureData(SignatureUtil signUtil, String name) throws GeneralSecurityException {
         PdfPKCS7 pkcs7 = signUtil.readSignatureData(name);
@@ -235,8 +255,7 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
         }
     }
 
-    public void showCertificateInfo(X509Certificate cert, Date signDate) {
-
+    public Map<String, String> showCertificateInfo(X509Certificate cert, Date signDate) {
         LogUtil.info(getClass().getName(), "Issuer: " + cert.getIssuerDN());
         LogUtil.info(getClass().getName(), "Subject: " + cert.getSubjectDN());
         SimpleDateFormat date_format = new SimpleDateFormat("yyyy-MM-dd-HH-mm");
@@ -244,7 +263,7 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
         LogUtil.info(getClass().getName(), "Valid from: " + date_format.format(cert.getNotBefore()));
         LogUtil.info(getClass().getName(), "Valid to: " + date_format.format(cert.getNotAfter()));
 
-        Map<String, String> rootData = new HashMap<>();
+        final Map<String, String> rootData = new HashMap<>();
         rootData.put("issuer", cert.getIssuerDN().toString());
         rootData.put("subject", cert.getSubjectDN().toString());
         rootData.put("validFrom", date_format.format(cert.getNotBefore()));
@@ -275,6 +294,12 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
             LogUtil.info(getClass().getName(), "The certificate isn't valid yet.");
             rootData.put("certificateStatus", "Invalid");
         }
-        rootList.add(rootData);
+        return rootData;
     }
 }
+
+
+
+// 20230102 -> err
+// 20220102 -> err
+// 20190102 -> err
