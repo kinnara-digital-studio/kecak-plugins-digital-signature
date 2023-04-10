@@ -13,7 +13,7 @@ import java.security.cert.CertificateException;
 import java.text.ParseException;
 
 public class Test {
-//    @org.junit.Test
+    @org.junit.Test
     public void generateKey() throws CertificateException, NoSuchAlgorithmException, KeyStoreException, IOException, OperatorCreationException, ParseException {
         DigitalCertificateFileUpload obj = new DigitalCertificateFileUpload() {
             @Override

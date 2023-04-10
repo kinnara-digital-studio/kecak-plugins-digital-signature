@@ -5,7 +5,6 @@ import com.kinnara.kecakplugins.digitalsignature.util.PKCS12Utils;
 import com.kinnarastudio.commons.Try;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.joget.apps.app.service.AppUtil;
-import org.joget.apps.form.service.FileUtil;
 import org.joget.commons.util.FileManager;
 import org.joget.commons.util.FileStore;
 import org.joget.commons.util.LogUtil;
@@ -13,11 +12,8 @@ import org.joget.plugin.base.ExtDefaultPlugin;
 import org.joget.plugin.base.PluginManager;
 import org.joget.plugin.base.PluginWebSupport;
 import org.joget.workflow.util.WorkflowUtil;
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.kecak.apps.exception.ApiException;
 import org.springframework.util.ResourceUtils;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
@@ -25,7 +21,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.net.URL;
-import java.nio.file.Files;
 import java.security.KeyPair;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -33,10 +28,7 @@ import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.text.ParseException;
 import java.util.Arrays;
-import java.util.Map;
-import java.util.Optional;
 import java.util.ResourceBundle;
-import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -115,7 +107,7 @@ public class SignApi extends ExtDefaultPlugin implements PluginWebSupport, PKCS1
                             }
 
                             //sign PDF
-                            startSign(userKeystoreFile, pdfFile, userFullName, "Sign", DEFAULT_DN_ORG);
+                            signPdf(userKeystoreFile, pdfFile, userFullName, "Sign", DEFAULT_DN_ORG);
                             final String name = pdfFile.getName();
 
                             //write file to output stream
@@ -130,7 +122,7 @@ public class SignApi extends ExtDefaultPlugin implements PluginWebSupport, PKCS1
                             zos.closeEntry();
                         }));
             }
-        } catch (ApiException e) {
+      } catch (ApiException e) {
             LogUtil.error(getClass().getName(), e, e.getMessage());
             servletResponse.sendError(e.getErrorCode(), e.getMessage());
         }

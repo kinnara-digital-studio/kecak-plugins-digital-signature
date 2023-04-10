@@ -17,6 +17,9 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.util.ResourceBundle;
 
+/**
+ *
+ */
 public class GetSignatureApi extends ExtDefaultPlugin implements PluginWebSupport, Unclutter, PdfUtil {
 
     @Override

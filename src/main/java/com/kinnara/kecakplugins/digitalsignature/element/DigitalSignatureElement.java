@@ -1,15 +1,12 @@
-package com.kinnara.kecakplugins.digitalsignature;
+package com.kinnara.kecakplugins.digitalsignature.element;
 
 import com.google.zxing.WriterException;
-import com.itextpdf.signatures.DigestAlgorithms;
-import com.itextpdf.signatures.PdfSigner;
 import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateException;
 import com.kinnara.kecakplugins.digitalsignature.util.PKCS12Utils;
 import com.kinnara.kecakplugins.digitalsignature.util.PdfUtil;
 import com.kinnara.kecakplugins.digitalsignature.util.Unclutter;
 import com.kinnara.kecakplugins.digitalsignature.webapi.GetQrCodeApi;
 import com.kinnara.kecakplugins.digitalsignature.webapi.GetSignatureApi;
-import com.kinnarastudio.commons.Try;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.service.AppUtil;
@@ -30,14 +27,11 @@ import org.joget.workflow.util.WorkflowUtil;
 import org.springframework.util.ResourceUtils;
 
 import java.io.*;
-import java.net.URL;
 import java.net.URLEncoder;
 import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
-import java.text.DateFormat;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -72,9 +66,9 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
         dataModel.put("className", getClassName());
 
         final String stampFile;
-        if(isSignature()) {
+        if (isSignature()) {
             stampFile = "/web/json/plugin/" + GetSignatureApi.class.getName() + "/service";
-        } else if(isQrCode()) {
+        } else if (isQrCode()) {
             stampFile = "/web/json/plugin/" + GetQrCodeApi.class.getName() + "/service?content=foo";
         } else {
             stampFile = "";
@@ -97,32 +91,34 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
                 return null;
             }
 
-            if(isSignature() || isQrCode()) {
+            if (isSignature() || isQrCode()) {
+                try {
+                    final String stampPositions = FormUtil.getElementPropertyValue(this, formData);
+                    final int page = getPagePosition(stampPositions);
+                    final float top = getTopPosition(stampPositions);
+                    final float left = getLeftPosition(stampPositions);
+                    final float scaleX = getScaleXPosition(stampPositions);
+                    final float scaleY = getScaleYPosition(stampPositions);
 
-                final String stampPositions = FormUtil.getElementPropertyValue(this, formData);
-                final int page = getPagePosition(stampPositions);
-                final float top = getTopPosition(stampPositions);
-                final float left = getLeftPosition(stampPositions);
-                final float scaleX = getScaleXPosition(stampPositions);
-                final float scaleY = getScaleYPosition(stampPositions);
-
-                // signature
-                if (isSignature()) {
-                    final File signatureFile = getSignature();
-                    stampPdf(pdfFile, signatureFile, page, left, top, scaleX, scaleY, Math.toRadians(0));
-                }
-
-                // QR code
-                else if (isQrCode()) {
-                    try (final ByteArrayOutputStream os = new ByteArrayOutputStream()) {
-                        writeQrCodeToStream(getQrContent(formData), os);
-
-                        final byte[] qrCode = os.toByteArray();
-                        stampPdf(pdfFile, qrCode, page, left, top, scaleX, scaleY, Math.toRadians(0));
+                    // signature
+                    if (isSignature()) {
+                        final File signatureFile = getSignature();
+                        stampPdf(pdfFile, signatureFile, page, left, top, scaleX, scaleY, Math.toRadians(0));
                     }
+
+                    // QR code
+                    else if (isQrCode()) {
+                        try (final ByteArrayOutputStream os = new ByteArrayOutputStream()) {
+                            writeQrCodeToStream(getQrContent(formData), os);
+
+                            final byte[] qrCode = os.toByteArray();
+                            stampPdf(pdfFile, qrCode, page, left, top, scaleX, scaleY, Math.toRadians(0));
+                        }
+                    }
+                } catch (IOException e) {
+                    LogUtil.error(getClass().getName(), e, e.getMessage());
                 }
             }
-
 
             final String userFullName = WorkflowUtil.getCurrentUserFullName();
             final String username = WorkflowUtil.getCurrentUsername();
@@ -131,14 +127,14 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
             boolean override = overrideSignature();
 
             boolean toSign = false;
-            if(!isSigned) {
+            if (!isSigned) {
                 toSign = true;
-            } else if(override) {
+            } else if (override) {
                 eraseSignature(pdfFile, userFullName);
                 toSign = true;
             }
 
-            if(toSign) {
+            if (toSign) {
                 final char[] password = getPassword();
                 final File keystoreFolder = new File(ResourceUtils.getURL(PATH_CERTIFICATE + "/" + username).getPath());
                 if (!keystoreFolder.exists()) {
@@ -154,9 +150,7 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
                 final PrivateKey privateKey = getPrivateKey(userKeystore, password);
                 final Provider securityProvider = getSecurityProvider();
 
-                startSign(userKeystore, pdfFile, userFullName, getReason(formData), getOrganization());
-                signPdf(userFullName, pdfFile, pdfFile, certificateChain, privateKey, DigestAlgorithms.SHA256, securityProvider.getName(), PdfSigner.CryptoStandard.CMS,
-                        getReason(formData), getOrganization(), null, null, null, 0);
+                signPdf(userKeystore, pdfFile, userFullName, getReason(formData), getOrganization());
             }
         } catch (IOException | DigitalCertificateException | WriterException | ParseException |
                  GeneralSecurityException | OperatorCreationException e) {
@@ -171,7 +165,7 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
 
     protected String getReason(FormData formData) throws DigitalCertificateException {
         final String propValue = getPropertyString("reason");
-        if(!propValue.isEmpty()) {
+        if (!propValue.isEmpty()) {
             return propValue;
         }
 
@@ -334,7 +328,6 @@ public class DigitalSignatureElement extends Element implements FormBuilderPalet
     }
 
     /**
-     *
      * @param userKeystore
      * @param pass
      * @param userFullname
