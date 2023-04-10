@@ -37,6 +37,7 @@ import java.util.stream.Stream;
 
 public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unclutter, PKCS12Utils {
 
+
     @Override
     public String getName() {
         return "Verify API";
@@ -64,7 +65,7 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
 
             LogUtil.info(getClass().getName(), "Executing Rest API [" + servletRequest.getRequestURI() + "] in method [" + servletRequest.getMethod() + "] contentType [" + servletRequest.getContentType() + "] as [" + WorkflowUtil.getCurrentUsername() + "]");
 
-            FileStore.getFileMap().values().stream()
+            final List<Map<String, Object>> data = FileStore.getFileMap().values().stream()
 
                     // unbox deep stream
                     .flatMap(Arrays::stream)
@@ -82,15 +83,10 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
 
                     // make sure file exists
                     .filter(File::exists)
-                    .map(Try.onFunction(pdfFile -> verifySignatures(pdfFile)))
-
-
-                    //verify PDF
                     .map(Try.onFunction(this::verifySignatures))
 
                     // if any error is found, return empty list
                     .orElse(Collections.emptyList());
-
             final JSONObject responseBody = new JSONObject();
             responseBody.put("Data", data);
 
