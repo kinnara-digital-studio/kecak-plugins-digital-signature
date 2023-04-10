@@ -82,57 +82,54 @@ public class SignApi extends ExtDefaultPlugin implements PluginWebSupport, PKCS1
                     "attachment; filename="+ZIP_NAME+userFullName+".zip");
 
             ServletOutputStream out = servletResponse.getOutputStream();
-            ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(out));
+            try(ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(out))){
+                FileStore.getFileMap().values().stream()
 
-            FileStore.getFileMap().values().stream()
+                        // unbox deep stream
+                        .flatMap(Arrays::stream)
 
-                    // unbox deep stream
-                    .flatMap(Arrays::stream)
+                        // store to temp folder (app_tempfile)
+                        .map(FileManager::storeFile)
 
-                    // store to temp folder (app_tempfile)
-                    .map(FileManager::storeFile)
+                        // construct path to file
+                        .map(path -> FileManager.getBaseDirectory() + "/" + path)
 
-                    // construct path to file
-                    .map(path -> FileManager.getBaseDirectory() + "/" + path)
+                        // assign file object
+                        .map(File::new)
 
-                    // assign file object
-                    .map(File::new)
+                        // make sure file exists
+                        .filter(File::exists)
 
-                    // make sure file exists
-                    .filter(File::exists)
+                        // collect stream as array of File
+                        .forEach(Try.onConsumer(pdfFile -> {
+                            // get / generate keystore
+                            String username = WorkflowUtil.getCurrentUsername();
 
-                    // collect stream as array of File
-                    .forEach(Try.onConsumer(pdfFile -> {
-                        // get / generate keystore
-                        String username = WorkflowUtil.getCurrentUsername();
+                            URL baseUrl = ResourceUtils.getURL(PATH_USER_CERTIFICATE + "/" + username);
+                            final File folder = new File(baseUrl.getPath());
+                            final File userKeystoreFile = getLatestKeystore(folder, "certificate." + KEYSTORE_TYPE);
 
-                        URL baseUrl = ResourceUtils.getURL(PATH_USER_CERTIFICATE + "/" + username);
-                        final File folder = new File(baseUrl.getPath());
-                        final File userKeystoreFile = getLatestKeystore(folder, "certificate." + KEYSTORE_TYPE);
+                            char[] pass = getPassword();
+                            if (!userKeystoreFile.exists()) {
+                                generateUserKey(userKeystoreFile, pass, userFullName);
+                            }
 
-                        char[] pass = getPassword();
-                        if (!userKeystoreFile.exists()) {
-                            generateUserKey(userKeystoreFile, pass, userFullName);
-                        }
+                            //sign PDF
+                            startSign(userKeystoreFile, pdfFile, userFullName, "Sign", DEFAULT_DN_ORG);
+                            final String name = pdfFile.getName();
 
-                        //sign PDF
-                        startSign(userKeystoreFile, pdfFile, userFullName, "Sign", DEFAULT_DN_ORG);
-                        final String name = pdfFile.getName();
-
-                        //write file to output stream
-                        zos.putNextEntry(new ZipEntry(name));
-                        FileInputStream fis = new FileInputStream(pdfFile);
-                        BufferedInputStream bis = new BufferedInputStream(fis);
-
-                        int data = 0;
-                        while ((data = bis.read()) != -1) {
-                            zos.write(data);
-                        }
-                        bis.close();
-                        zos.closeEntry();
-                    }));
-
-            zos.close();
+                            //write file to output stream
+                            zos.putNextEntry(new ZipEntry(name));
+                            FileInputStream fis = new FileInputStream(pdfFile);
+                            try(BufferedInputStream bis = new BufferedInputStream(fis)){
+                                int data = 0;
+                                while ((data = bis.read()) != -1) {
+                                    zos.write(data);
+                                }
+                            }
+                            zos.closeEntry();
+                        }));
+            }
         } catch (ApiException e) {
             LogUtil.error(getClass().getName(), e, e.getMessage());
             servletResponse.sendError(e.getErrorCode(), e.getMessage());

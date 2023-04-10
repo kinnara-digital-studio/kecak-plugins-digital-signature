@@ -38,7 +38,6 @@ import java.util.zip.ZipEntry;
 
 public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unclutter, PKCS12Utils {
     private KeyStore ks;
-    public Map<String, Object> signatureData = new HashMap<>();
     public List<Map<String, String>> rootList = new ArrayList<>();
     public List<Map<String, Object>> data = new ArrayList<>();
 
@@ -78,6 +77,8 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
                     // store to temp folder (app_tempfile)
                     .map(FileManager::storeFile)
 
+                    .findFirst()
+
                     // construct path to file
                     .map(path -> FileManager.getBaseDirectory() + "/" + path)
 
@@ -86,12 +87,13 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
 
                     // make sure file exists
                     .filter(File::exists)
+                    .map(Try.onFunction(pdfFile -> verifySignatures(pdfFile)))
 
-                    // collect stream as array of File
-                    .forEach(Try.onConsumer(pdfFile -> {
-                        //verify PDF
-                        verifySignatures(pdfFile.getAbsolutePath());
-                    }));
+//                    // collect stream as array of File
+//                    .forEach(Try.onConsumer(pdfFile -> {
+//                        //verify PDF
+//                        verifySignatures(pdfFile.getAbsolutePath());
+//                    }));
 
             final JSONObject responseBody = new JSONObject();
             responseBody.put("Data", data);
@@ -108,23 +110,25 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
     }
 
     public void verifySignatures(String path) throws IOException, GeneralSecurityException, DigitalCertificateException, ApiException {
-        PdfDocument pdfDoc = new PdfDocument(new PdfReader(path));
-        SignatureUtil signUtil = new SignatureUtil(pdfDoc);
-        List<String> names = signUtil.getSignatureNames();
+        try(PdfDocument pdfDoc = new PdfDocument(new PdfReader(path))){
+            SignatureUtil signUtil = new SignatureUtil(pdfDoc);
+            List<String> names = signUtil.getSignatureNames();
 
-        LogUtil.info(getClass().getName(), path);
-        for (String name : names) {
-            signatureData = new HashMap<>();
-            signatureData.put("signatureName", name);
+            LogUtil.info(getClass().getName(), path);
+            for (String name : names) {
+                final Map<String, Object> signatureData = new HashMap<>();
+                signatureData.put("signatureName", name);
 
-            LogUtil.info(getClass().getName(), "===== " + name + " =====");
-            verifySignature(signUtil, name);
+                LogUtil.info(getClass().getName(), "===== " + name + " =====");
+                signatureData.putAll(verifySignature(signUtil, name, signatureData));
 
-            data.add(signatureData);
+                data.add(signatureData);
+            }
         }
+
     }
 
-    public PdfPKCS7 verifySignature(SignatureUtil signUtil, String name) throws GeneralSecurityException,
+    public Map<String, Object> verifySignature(SignatureUtil signUtil, String name, Map<String, Object> signatureData) throws GeneralSecurityException,
             IOException, ApiException, DigitalCertificateException {
         PdfPKCS7 pkcs7 = getSignatureData(signUtil, name);
         Certificate[] certs = pkcs7.getSignCertificateChain();
@@ -186,7 +190,7 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
         LogUtil.info(getClass().getName(), "=== Checking validity of the document today ===");
         checkRevocation(pkcs7, signCert, issuerCert, new Date());
 
-        return pkcs7;
+        return signatureData;
     }
 
     public PdfPKCS7 getSignatureData(SignatureUtil signUtil, String name) throws GeneralSecurityException {
