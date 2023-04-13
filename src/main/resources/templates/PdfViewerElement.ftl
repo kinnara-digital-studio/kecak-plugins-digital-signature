@@ -59,7 +59,7 @@
         &nbsp; &nbsp;
         <span>Page: <span class="page_num"></span> / <span class="page_count"></span></span>
     </div>
-	<div id="document-container-${uniqueKey}" style="width:750px;height:600px;overflow-y:scroll;">
+	<div id="document-container-${uniqueKey}" style="width:750px;height:600px;overflow-y:scroll;background: gray">
 		<div class="wrapper">
             <canvas id="pdf-canvas-${uniqueKey}" width="100%" height="500px" style="display:block;cursor:pointer;cursor: hand;"></canvas>
             <canvas id="stamp-canvas-${uniqueKey}"></canvas>
@@ -86,7 +86,7 @@
 		</div>
 		-->
 	</div>
-	<input id="${elementParamName!}_${uniqueKey!}" name="${elementParamName!}" type="hidden">
+	<input id="${elementParamName!}_${uniqueKey!}" name="${elementParamName!}" type="hidden" value="1;0;0;1;1">
 	
 	<script>
 		$(document).ready(function(){
@@ -142,8 +142,8 @@
 								
 							fabric.Image.fromURL('${stampFile!?html}', function(img){
 								fobject.add(img);
-								fobject.on('object:moving', onChange, false);
-								fobject.on('object:scaling', onChange, false);
+								fobject.on('object:moving', onStampChange, false);
+								fobject.on('object:scaling', onStampChange, false);
 								img.controls.mtr = new fabric.Control({ visible: false });
 							});
 						}
@@ -158,9 +158,11 @@
 			
 				 // Update page counters
 				 $('.page_num').html(num);
+
+				 onPageChange(num);
 			}
 
-			function onChange(event) {
+			function onStampChange(event) {
                 let top = event.transform.target.top;
                 let left = event.transform.target.left;
                 let scaleY = event.transform.target.scaleY;
@@ -170,6 +172,19 @@
 
                 let value = [pageNum, top, left, scaleY, scaleX].join(';');
                 $('#${elementParamName!}_${uniqueKey!}').val(value);
+            }
+
+            function onPageChange(page) {
+                let oldValue = $('#${elementParamName!}_${uniqueKey!}').val();
+
+                let split = oldValue.split(';');
+                let top = split[1]
+                let left = split[2];
+                let scaleY = split[3];
+                let scaleX = split[4];
+
+                let newValue = [page, top, left, scaleY, scaleX].join(';');
+                $('#${elementParamName!}_${uniqueKey!}').val(newValue);
             }
 			
 			function queueRenderPage(num) {

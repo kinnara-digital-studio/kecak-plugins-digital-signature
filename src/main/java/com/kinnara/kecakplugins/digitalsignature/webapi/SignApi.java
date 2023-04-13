@@ -1,6 +1,7 @@
 package com.kinnara.kecakplugins.digitalsignature.webapi;
 
 import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateException;
+import com.kinnara.kecakplugins.digitalsignature.util.OtpUtil;
 import com.kinnara.kecakplugins.digitalsignature.util.PKCS12Utils;
 import com.kinnarastudio.commons.Try;
 import org.bouncycastle.operator.OperatorCreationException;
@@ -32,7 +33,7 @@ import java.util.ResourceBundle;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-public class SignApi extends ExtDefaultPlugin implements PluginWebSupport, PKCS12Utils {
+public class SignApi extends ExtDefaultPlugin implements PluginWebSupport, PKCS12Utils, OtpUtil {
     public static String ZIP_NAME = "signedPDFBy";
     @Override
 
@@ -54,6 +55,9 @@ public class SignApi extends ExtDefaultPlugin implements PluginWebSupport, PKCS1
 
     @Override
     public void webService(HttpServletRequest servletRequest, HttpServletResponse servletResponse) throws ServletException, IOException {
+        final String auditMessage = "Executing Rest API [" + servletRequest.getRequestURI() + "] in method [" + servletRequest.getMethod() + "] contentType [" + servletRequest.getContentType() + "] as [" + WorkflowUtil.getCurrentUsername() + "]";
+        LogUtil.info(getClass().getName(), auditMessage);
+
         try {
             final String method = servletRequest.getMethod();
             if (!"POST".equalsIgnoreCase(method)) {
@@ -64,9 +68,14 @@ public class SignApi extends ExtDefaultPlugin implements PluginWebSupport, PKCS1
                 throw new ApiException(HttpServletResponse.SC_UNAUTHORIZED, "Login required");
             }
 
-            // TODO sign pdf document
+            final String username = WorkflowUtil.getCurrentUsername();
+            final String token = "";
 
-            LogUtil.info(getClass().getName(), "Executing Rest API [" + servletRequest.getRequestURI() + "] in method [" + servletRequest.getMethod() + "] contentType [" + servletRequest.getContentType() + "] as [" + WorkflowUtil.getCurrentUsername() + "]");
+            // check OTP token
+            if(!validateOtp(username, token, DETAULT_TIMELIMIT)) {
+                throw new ApiException(HttpServletResponse.SC_BAD_REQUEST, "Invalid token");
+            }
+
 
             final String userFullName = WorkflowUtil.getCurrentUserFullName();
             servletResponse.setContentType("Content-type: text/zip");
@@ -95,8 +104,6 @@ public class SignApi extends ExtDefaultPlugin implements PluginWebSupport, PKCS1
                         // collect stream as array of File
                         .forEach(Try.onConsumer(pdfFile -> {
                             // get / generate keystore
-                            String username = WorkflowUtil.getCurrentUsername();
-
                             URL baseUrl = ResourceUtils.getURL(PATH_USER_CERTIFICATE + "/" + username);
                             final File folder = new File(baseUrl.getPath());
                             final File userKeystoreFile = getLatestKeystore(folder, "certificate." + KEYSTORE_TYPE);

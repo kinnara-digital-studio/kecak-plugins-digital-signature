@@ -1,7 +1,7 @@
 [
   {
     "title": "Certificate Attributes",
-    "properties" : [
+    "properties": [
       {
         "name": "organizationalUnit",
         "label": "@@digitalCertificate.organizationalUnit@@",
@@ -37,12 +37,17 @@
         "label": "@@digitalCertificate.override@@",
         "description": "@@digitalCertificate.override.desc@@",
         "type": "checkbox",
-        "value" : "true",
-        "options" : [{ "value" : "true", "label" : ""}]
+        "value": "true",
+        "options": [
+          {
+            "value": "true",
+            "label": ""
+          }
+        ]
       },
       {
-        "label" : "@@digital.signature.fields@@",
-        "type" : "header"
+        "label": "@@digital.signature.fields@@",
+        "type": "header"
       },
       {
         "name": "reason",
@@ -52,4 +57,4 @@
       }
     ]
   }
-  ]
+]

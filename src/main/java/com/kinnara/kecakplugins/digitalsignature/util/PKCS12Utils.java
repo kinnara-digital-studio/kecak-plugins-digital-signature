@@ -33,7 +33,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Stream;
 
-public interface PKCS12Utils {
+public interface PKCS12Utils extends AuditTrailUtil {
     String PATH_USER_CERTIFICATE = "wflow/app_certificate/";
     String PATH_ROOT = "wflow/app_certificate/root";
     String ROOT_KEYSTORE = "root.pkcs12";
@@ -268,6 +268,8 @@ public interface PKCS12Utils {
     }
 
     default void signPdf(File userKeystoreFile, File pdfFile, String userFullname, String reason, String organization) throws IOException, GeneralSecurityException, DigitalCertificateException {
+        executeAuditTrail("signPdf", userKeystoreFile, pdfFile, userFullname,  reason,  organization);
+
         char[] pass = getPassword();
         try (InputStream is = Files.newInputStream(userKeystoreFile.toPath())) {
             KeyStore ks = KeyStore.getInstance(KEYSTORE_TYPE);

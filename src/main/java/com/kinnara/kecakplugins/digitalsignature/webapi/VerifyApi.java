@@ -123,10 +123,9 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
      * @return
      * @throws GeneralSecurityException
      * @throws IOException
-     * @throws DigitalCertificateException
      */
     public Map<String, Object> verifySignature(SignatureUtil signUtil, String name) throws GeneralSecurityException,
-            IOException, DigitalCertificateException, DigitalCertificateVerificationException {
+            IOException, DigitalCertificateVerificationException {
         PdfPKCS7 pkcs7 = getSignatureData(signUtil, name);
         Certificate[] certs = pkcs7.getSignCertificateChain();
 

@@ -23,7 +23,7 @@ import java.net.URL;
 import java.util.Collections;
 import java.util.Map;
 
-public interface PdfUtil {
+public interface PdfUtil extends AuditTrailUtil{
     String PATH_CERTIFICATE = "wflow/app_certificate/";
 
     String TEMP_FILE_EXTENSION = ".tmp";
@@ -43,6 +43,8 @@ public interface PdfUtil {
     }
 
     default void stampPdf(File pdfFile, byte[] stampFile, int page, float left, float top, float xScale, float yScale, double rotate) throws IOException {
+        executeAuditTrail("stampPdf", pdfFile, stampFile, page, left, top, xScale, yScale, rotate);
+
         final String tempFilePath = pdfFile.getPath() + TEMP_FILE_EXTENSION;
         final File tempPdfFile = new File(tempFilePath);
 

@@ -34,7 +34,7 @@ import java.util.stream.Stream;
 
 
 public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Utils {
-    public final static String PATH_CERTIFICATE = "wflow/app_certificate/";
+
     public final static String PATH_FORMUPLOADS = "wflow/app_formuploads/";
 
     public FormRowSet formatData(FormData formData) {
@@ -68,7 +68,7 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
                 //get digital certificate of current user login
                 String username = WorkflowUtil.getCurrentUsername();
 
-                URL baseUrl = ResourceUtils.getURL(PATH_CERTIFICATE + "/" + username);
+                URL baseUrl = ResourceUtils.getURL(PATH_USER_CERTIFICATE + "/" + username);
                 final File folder = new File(baseUrl.getPath());
                 final File userKeystoreFile = getLatestKeystore(folder, "certificate." + KEYSTORE_TYPE);
                 LogUtil.info(getClassName(), "latest certificate : " + userKeystoreFile.getName());
@@ -215,7 +215,7 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
     @Override
     public String getPropertyOptions() {
         try {
-            JSONArray currentPluginProperties = new JSONArray(AppUtil.readPluginResource(getClassName(), "/properties/DigitalCertificate.json", null, true, "/messages/DigitalCertificate"));
+            JSONArray currentPluginProperties = new JSONArray(AppUtil.readPluginResource(getClassName(), "/properties/DigitalCertificateFileUpload.json", null, true, "/messages/DigitalCertificate"));
             JSONArray parentPluginProperties = new JSONArray(super.getPropertyOptions());
 
             // merge with parent's plugin properties

@@ -20,7 +20,7 @@ import java.util.ResourceBundle;
 public class GetQrCodeApi extends ExtDefaultPlugin implements PluginWebSupport, Unclutter, PdfUtil {
     @Override
     public String getName() {
-        return "Get QR Core API";
+        return "Get QR Code API";
     }
 
     @Override

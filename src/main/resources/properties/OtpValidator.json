@@ -1,0 +1,21 @@
+[
+  {
+    "title":"Digital Signature OTP Validator",
+    "properties": [
+      {
+        "name": "timeout",
+        "label": "Expired Time (in Minutes)",
+        "type": "textfield",
+        "value": "%s",
+        "required": "true"
+      },
+      {
+        "name": "errorMessage",
+        "label": "Error Message",
+        "type": "textfield",
+        "value": "Invalid token",
+        "required": "true"
+      }
+    ]
+  }
+]
