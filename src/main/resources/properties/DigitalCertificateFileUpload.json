@@ -33,19 +33,6 @@
         "type": "textfield"
       },
       {
-        "name": "override",
-        "label": "@@digitalCertificate.override@@",
-        "description": "@@digitalCertificate.override.desc@@",
-        "type": "checkbox",
-        "value": "true",
-        "options": [
-          {
-            "value": "true",
-            "label": ""
-          }
-        ]
-      },
-      {
         "label": "@@digital.signature.fields@@",
         "type": "header"
       },

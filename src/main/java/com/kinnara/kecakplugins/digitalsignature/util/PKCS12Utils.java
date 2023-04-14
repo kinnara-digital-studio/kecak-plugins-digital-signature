@@ -7,6 +7,9 @@ import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.kernel.pdf.StampingProperties;
 import com.itextpdf.signatures.*;
 import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateException;
+import com.lowagie.text.DocumentException;
+import com.lowagie.text.pdf.AcroFields;
+import com.lowagie.text.pdf.PdfStamper;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.cert.X509CertificateHolder;
@@ -347,16 +350,23 @@ public interface PKCS12Utils extends AuditTrailUtil {
 
         try (PdfReader reader = new PdfReader(src);
              PdfWriter writer = new PdfWriter(tempFile);
-             PdfDocument document = new PdfDocument(reader, writer)) {
-
+             PdfDocument document = new PdfDocument(reader, writer)){
             LogUtil.debug(getClass().getName(), "Creating temp file [" + tempFile.getAbsolutePath() + "]");
         }
 
-        try (PdfReader reader = new PdfReader(tempFile);
-             PdfWriter writer = new PdfWriter(dest);
-             PdfDocument pdfDocument = new PdfDocument(reader, writer)) {
-            PdfAcroForm acroForm = PdfAcroForm.getAcroForm(pdfDocument, true);
-            acroForm.removeField(signatureName);
+        try(
+//             PdfReader readerTemp = new PdfReader(tempFile);
+             PdfWriter writerDest = new PdfWriter(dest)) {
+
+            com.lowagie.text.pdf.PdfReader readerAcro = new com.lowagie.text.pdf.PdfReader(tempFile.toURL());
+            AcroFields acroFields = readerAcro.getAcroFields();
+            LogUtil.info(getClass().getName(), "Test acro : " + acroFields.getSignatureNames().get(1));
+            LogUtil.info(getClass().getName(), "Signature name : " + signatureName);
+            acroFields.removeField(signatureName);
+            PdfStamper pdfStamper = new PdfStamper(readerAcro, writerDest);
+            pdfStamper.close();
+        } catch (DocumentException e) {
+            LogUtil.error(getClass().getName(), e, e.getMessage());
         }
 
         if(tempFile.delete()) {

@@ -54,15 +54,18 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
                 pdfFile = ResourceUtils.getFile(fileUrl.getPath());
             }
             boolean signed = isSigned(pdfFile, userFullname);
-            boolean override = overrideSignature();
+//            boolean override = overrideSignature();
 
             boolean toSign = false;
+            LogUtil.info(getClassName(), "Test 1");
             if (!signed) {
                 toSign = true;
-            } else if (override) {
-                toSign = true;
-                eraseSignature(pdfFile, pdfFile, userFullname);
             }
+//            } else if (override) {
+//                toSign = true;
+//                LogUtil.info(getClassName(), "need to erase.");
+//                eraseSignature(pdfFile, pdfFile, userFullname);
+//            }
 
             if (toSign) {
                 //get digital certificate of current user login
@@ -177,7 +180,8 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
 
 
     protected boolean overrideSignature() {
-        return "true".equalsIgnoreCase(getPropertyString("override"));
+//        return "true".equalsIgnoreCase(getPropertyString("override"));
+        return false;
     }
 
     @Override
