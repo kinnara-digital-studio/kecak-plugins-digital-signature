@@ -7,20 +7,35 @@ import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.kernel.pdf.StampingProperties;
 import com.itextpdf.signatures.*;
 import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateException;
+import com.kinnara.kecakplugins.digitalsignature.webapi.GetTimeStampApi;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x509.ExtendedKeyUsage;
+import org.bouncycastle.asn1.x509.KeyPurposeId;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
+import org.bouncycastle.asn1.x509.X509Extension;
+import org.bouncycastle.cert.CertIOException;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
+import org.bouncycastle.cert.ocsp.CertificateID;
+import org.bouncycastle.cms.SignerInfoGenerator;
+import org.bouncycastle.cms.jcajce.JcaSimpleSignerInfoGeneratorBuilder;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
+import org.bouncycastle.operator.DigestCalculator;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder;
+import org.bouncycastle.tsp.*;
+import org.javatuples.Pair;
 import org.joget.commons.util.LogUtil;
 import org.joget.commons.util.SecurityUtil;
 import org.joget.commons.util.SetupManager;
+import org.kecak.apps.exception.ApiException;
 
+import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.math.BigInteger;
 import java.nio.file.Files;
@@ -36,9 +51,10 @@ import java.util.stream.Stream;
 public interface PKCS12Utils extends AuditTrailUtil {
     String PATH_USER_CERTIFICATE = "wflow/app_certificate/";
     String PATH_ROOT = "wflow/app_certificate/root";
-    String ROOT_KEYSTORE = "root.pkcs12";
     String DEFAULT_PASSWORD = "SuperSecurePasswordNoOneCanBreak";
     String KEYSTORE_TYPE = "pkcs12";
+    String ROOT_KEYSTORE = "root." + KEYSTORE_TYPE;
+    String USER_KEYSTORE = "certificate." + KEYSTORE_TYPE;
     String SIGNATURE_ALGORITHM = "SHA256WithRSA";
 
     String DATETIME_FORMAT = "yyyyMMddHHmmss";
@@ -94,7 +110,7 @@ public interface PKCS12Utils extends AuditTrailUtil {
     default void generateRootKey(File certificateFile) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException, UnrecoverableKeyException, DigitalCertificateException {
         KeyPair generatedKeyPair = generateKeyPair();
         String subjectDn = getDn(DEFAULT_DN_ROOT_NAME, DEFAULT_DN_ORG_UNIT, DEFAULT_DN_ORG, DEFAULT_DN_LOCALITY, DEFAULT_DN_STATE, DEFAULT_DN_COUNTRY);
-        generatePKCS12(certificateFile, getPassword(), generatedKeyPair, subjectDn, false);
+        generatePKCS12(certificateFile, getPassword(), generatedKeyPair, subjectDn, true);
     }
 
     /**
@@ -122,10 +138,14 @@ public interface PKCS12Utils extends AuditTrailUtil {
         X500Name issuerDn = new X500Name(subjectDn);
         Certificate root = null;
 
-        if(!isRoot){
-            final File rootKeystoreFolder = new File(PATH_ROOT);
-            File rootKeystoreFile = getLatestKeystore(rootKeystoreFolder, ROOT_KEYSTORE);
-            if(!rootKeystoreFile.exists()) {
+        if (!isRoot) {
+            final File pathRoot = new File(PATH_ROOT);
+            Optional<File> optRootKeystoreFile = optLatestKeystore(pathRoot, ROOT_KEYSTORE);
+            final File rootKeystoreFile;
+            if (optRootKeystoreFile.map(File::exists).orElse(false)) {
+                rootKeystoreFile = optRootKeystoreFile.get();
+            } else {
+                rootKeystoreFile = getPathCertificateName(pathRoot, ROOT_KEYSTORE);
                 generateRootKey(rootKeystoreFile);
             }
 
@@ -172,6 +192,12 @@ public interface PKCS12Utils extends AuditTrailUtil {
         X509v3CertificateBuilder certificateBuilder = new X509v3CertificateBuilder(issuerDnName,
                 certSerialNumber, startDate, endDate, dnName, subjectPublicKeyInfo);
 
+        try {
+            certificateBuilder.addExtension(X509Extension.extendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeId.id_kp_timeStamping));
+        } catch (CertIOException e) {
+            LogUtil.error(getClass().getName(), e, e.getMessage());
+        }
+
         ContentSigner contentSigner = new JcaContentSignerBuilder(SIGNATURE_ALGORITHM).setProvider(
                 bcProvider).build(issuerPrivateKey);
 
@@ -182,16 +208,15 @@ public interface PKCS12Utils extends AuditTrailUtil {
     }
 
     default String getAlias(KeyStore ks, char[] pass) throws KeyStoreException, UnrecoverableKeyException, NoSuchAlgorithmException {
-        String alias = "";
         Enumeration<String> en = ks.aliases();
         while (en.hasMoreElements()) {
-            alias = en.nextElement();
+            String alias = en.nextElement();
             Key key = ks.getKey(alias, pass);
             if (key instanceof PrivateKey) {
-                break;
+                return alias;
             }
         }
-        return alias;
+        return "";
     }
 
     default char[] getPassword() {
@@ -211,7 +236,7 @@ public interface PKCS12Utils extends AuditTrailUtil {
      * @param filename
      * @return
      */
-    default File getLatestKeystore(File folder, String filename) {
+    default Optional<File> optLatestKeystore(File folder, String filename) {
         if (!folder.exists()) {
             folder.mkdirs();
         }
@@ -220,8 +245,7 @@ public interface PKCS12Utils extends AuditTrailUtil {
                 .map(Arrays::stream)
                 .orElseGet(Stream::empty)
                 .filter(file -> file.getName().endsWith("_" + filename))
-                .max(Comparator.comparing(File::getName))
-                .orElseGet(() -> getPathCertificateName(folder, filename));
+                .max(Comparator.comparing(File::getName));
     }
 
     default Certificate[] getCertificateChain(File certificateFile, char[] password) throws IOException, CertificateException, NoSuchAlgorithmException, KeyStoreException, UnrecoverableKeyException {
@@ -267,11 +291,49 @@ public interface PKCS12Utils extends AuditTrailUtil {
         return generator.generateKeyPair();
     }
 
-    default void signPdf(File userKeystoreFile, File pdfFile, String userFullname, String reason, String organization) throws IOException, GeneralSecurityException, DigitalCertificateException {
-        executeAuditTrail("signPdf", userKeystoreFile, pdfFile, userFullname,  reason,  organization);
+    default void signPdf(File userKeystoreFile, File pdfFile, String userFullname, String reason, String organization, boolean useTimeStamp) throws IOException, GeneralSecurityException, DigitalCertificateException {
+        executeAuditTrail("signPdf", userKeystoreFile, pdfFile, userFullname, reason, organization);
 
         char[] pass = getPassword();
         try (InputStream is = Files.newInputStream(userKeystoreFile.toPath())) {
+            KeyStore ks = KeyStore.getInstance(KEYSTORE_TYPE);
+            ks.load(is, pass);
+
+            Pair<Certificate[], PrivateKey> extractedKs = extractKeystore(userKeystoreFile, pass);
+            Certificate[] chain = extractedKs.getValue0();
+            PrivateKey privateKey = extractedKs.getValue1();
+            Provider provider = new BouncyCastleProvider();
+            Security.addProvider(provider);
+
+            final String tsaUrl = "http://localhost:8080/web/json/plugin/" + GetTimeStampApi.class.getName() + "/service";
+
+            TSAClientBouncyCastle tsaClient;
+            if (useTimeStamp) {
+                tsaClient = new TSAClientBouncyCastle(tsaUrl) {
+                    @Override
+                    protected byte[] getTSAResponse(byte[] requestBytes) throws IOException {
+                        try {
+                            return getTimeStampResponse(requestBytes);
+                        } catch (UnrecoverableKeyException | CertificateException | NoSuchAlgorithmException |
+                                 KeyStoreException | ParseException | TSPException | OperatorCreationException |
+                                 DigitalCertificateException e) {
+                            return null;
+                        }
+                    }
+                };
+            } else {
+                tsaClient = null;
+            }
+
+
+            signPdf(userFullname, pdfFile, pdfFile, chain, privateKey, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
+                    reason, organization, null, null, tsaClient, 0);
+
+        }
+    }
+
+    default Pair<Certificate[], PrivateKey> extractKeystore(File keystore, char[] pass) throws IOException, UnrecoverableKeyException, KeyStoreException, NoSuchAlgorithmException, CertificateException, DigitalCertificateException {
+        try (InputStream is = Files.newInputStream(keystore.toPath())) {
             KeyStore ks = KeyStore.getInstance(KEYSTORE_TYPE);
             ks.load(is, pass);
 
@@ -279,15 +341,10 @@ public interface PKCS12Utils extends AuditTrailUtil {
             Certificate[] chain = ks.getCertificateChain(alias);
             PrivateKey privateKey = (PrivateKey) ks.getKey(alias, pass);
             if (privateKey == null) {
-                throw new DigitalCertificateException("Private key is not found in alias [" + alias + "] keystore [" + userKeystoreFile.getAbsolutePath() + "]");
+                throw new DigitalCertificateException("Private key is not found in alias [" + alias + "] keystore [" + keystore.getAbsolutePath() + "]");
             }
 
-            BouncyCastleProvider provider = new BouncyCastleProvider();
-            Security.addProvider(provider);
-
-            signPdf(userFullname, pdfFile, pdfFile, chain, privateKey, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
-                    reason, organization, null, null, null, 0);
-
+            return Pair.with(chain, privateKey);
         }
     }
 
@@ -359,10 +416,63 @@ public interface PKCS12Utils extends AuditTrailUtil {
             acroForm.removeField(signatureName);
         }
 
-        if(tempFile.delete()) {
+        if (tempFile.delete()) {
             LogUtil.debug(getClass().getName(), "Temp file [" + tempFile.getAbsolutePath() + "] has been deleted");
         }
 
     }
 
+    default byte[] getTimeStampResponse(byte[] tsqBytes) throws IOException, UnrecoverableKeyException, CertificateException, NoSuchAlgorithmException, KeyStoreException, ParseException, TSPException, OperatorCreationException, DigitalCertificateException {
+        TimeStampRequest timeStampRequest = new TimeStampRequest(tsqBytes);
+        TimeStampResponse timeStampResponse = getTimeStampResponse(timeStampRequest);
+        return timeStampResponse.getEncoded();
+    }
+
+    default TimeStampResponse getTimeStampResponse(TimeStampRequest timeStampRequest) throws UnrecoverableKeyException, CertificateException, NoSuchAlgorithmException, KeyStoreException, IOException, ParseException, OperatorCreationException, DigitalCertificateException, TSPException {
+
+//            TimeStampRequestGenerator tsRequestGenerator = new TimeStampRequestGenerator();
+//            tsRequestGenerator.setCertReq(true);
+//            TimeStampRequest tsRequest = tsRequestGenerator.generate();
+
+
+//            // validate the timestamp request
+//            if (!timeStampRequest.validate(new BcDigestCalculatorProvider())) {
+//                throw new ApiException(HttpServletResponse.SC_BAD_REQUEST, "Invalid timestamp request");
+//            }
+
+        JcaSimpleSignerInfoGeneratorBuilder signerInfoGeneratorBuilder = new JcaSimpleSignerInfoGeneratorBuilder();
+
+        final File pathRoot = new File(PATH_ROOT);
+        final Optional<File> optRootKeystoreFile = optLatestKeystore(pathRoot, ROOT_KEYSTORE);
+        final File rootKeystoreFile;
+
+        if (optRootKeystoreFile.map(File::exists).orElse(false)) {
+            rootKeystoreFile = optRootKeystoreFile.get();
+        } else {
+            rootKeystoreFile = getPathCertificateName(pathRoot, ROOT_KEYSTORE);
+            generateRootKey(rootKeystoreFile);
+        }
+        Pair<Certificate[], PrivateKey> extractedKs = extractKeystore(rootKeystoreFile, getPassword());
+        X509Certificate rootCertificate = Optional.of(extractedKs)
+                .map(Pair::getValue0)
+                .map(Arrays::stream)
+                .orElseGet(Stream::empty)
+                .filter(c -> c instanceof X509Certificate)
+                .map(c -> (X509Certificate) c)
+                .findAny()
+                .orElseThrow(() -> new DigitalCertificateException("Error retrieving root certificate"));
+
+        SignerInfoGenerator signerInfoGenerator = signerInfoGeneratorBuilder.build(SIGNATURE_ALGORITHM, extractedKs.getValue1(), rootCertificate);
+        String policyId = getClass().getPackage().getImplementationVersion();
+
+
+        DigestCalculator digestCalculator = new JcaDigestCalculatorProviderBuilder().build()
+                .get(CertificateID.HASH_SHA1);
+
+        TimeStampTokenGenerator tokenGenerator = new TimeStampTokenGenerator(signerInfoGenerator, digestCalculator, new ASN1ObjectIdentifier(policyId));
+        TimeStampResponseGenerator responseGenerator = new TimeStampResponseGenerator(tokenGenerator, TSPAlgorithms.ALLOWED);
+
+        Date now = new Date();
+        return responseGenerator.generate(timeStampRequest, BigInteger.valueOf(now.getTime()), now);
+    }
 }

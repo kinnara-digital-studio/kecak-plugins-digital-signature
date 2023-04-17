@@ -34,7 +34,7 @@ import java.util.stream.Stream;
  * Stamping will be handled in method {@link #store(Element, FormRowSet, FormData)} while
  * signing will be handled by {@link #secondaryBinder}
  */
-public class PdfViewerElement extends Element implements FormBuilderPaletteElement, FileDownloadSecurity, FormStoreElementBinder, Unclutter, PdfUtil, PKCS12Utils {
+public class PdfViewerElement extends Element implements FormBuilderPaletteElement, FileDownloadSecurity, FormStoreBinder, Unclutter, PdfUtil, PKCS12Utils {
     // secondary binder will be executed after embedded store binder
     private FormStoreBinder secondaryBinder = null;
 
@@ -193,7 +193,7 @@ public class PdfViewerElement extends Element implements FormBuilderPaletteEleme
      */
     @Override
     public void setStoreBinder(FormStoreBinder storeBinderFromProperties) {
-        super.setStoreBinder(this); // inline store binder
+        super.setStoreBinder(new PdfViewerElementStoreBinder()); // inline store binder
 
         // secondary store is set with store binder in properties
         this.secondaryBinder = storeBinderFromProperties;
@@ -253,5 +253,42 @@ public class PdfViewerElement extends Element implements FormBuilderPaletteEleme
         }
 
         return secondaryBinder == null ? rowSet : secondaryBinder.store(element, rowSet, formData);
+    }
+
+    public static class PdfViewerElementStoreBinder extends FormBinder implements FormStoreBinder {
+        @Override
+        public FormRowSet store(Element element, FormRowSet formRowSet, FormData formData) {
+            return ((PdfViewerElement)element).store(element, formRowSet, formData);
+        }
+
+        @Override
+        public String getName() {
+            return "Proxy Store Binde for PDF Viewer Elementr";
+        }
+
+        @Override
+        public String getVersion() {
+            return getClass().getPackage().getImplementationVersion();
+        }
+
+        @Override
+        public String getDescription() {
+            return getClass().getPackage().getImplementationTitle();
+        }
+
+        @Override
+        public String getLabel() {
+            return getName();
+        }
+
+        @Override
+        public String getClassName() {
+            return getClass().getName();
+        }
+
+        @Override
+        public String getPropertyOptions() {
+            return null;
+        }
     }
 }

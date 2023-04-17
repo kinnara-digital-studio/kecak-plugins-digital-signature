@@ -70,14 +70,18 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
 
                 URL baseUrl = ResourceUtils.getURL(PATH_USER_CERTIFICATE + "/" + username);
                 final File folder = new File(baseUrl.getPath());
-                final File userKeystoreFile = getLatestKeystore(folder, "certificate." + KEYSTORE_TYPE);
-                LogUtil.info(getClassName(), "latest certificate : " + userKeystoreFile.getName());
+                final Optional<File> optUserKeystoreFile = optLatestKeystore(folder, USER_KEYSTORE);
                 char[] pass = getPassword();
-                if (!userKeystoreFile.exists()) {
+
+                final File userKeystoreFile;
+                if (optUserKeystoreFile.map(File::exists).orElse(false)) {
+                    userKeystoreFile = optUserKeystoreFile.get();
+                } else {
+                    userKeystoreFile = getPathCertificateName(folder, USER_KEYSTORE);
                     generateUserKey(userKeystoreFile, pass, userFullname);
                 }
 
-                signPdf(userKeystoreFile, pdfFile, userFullname, getReason(formData),getOrganization());
+                signPdf(userKeystoreFile, pdfFile, userFullname, getReason(formData),getOrganization(), useTimeStamp());
                 LogUtil.info(getClassName(), "Document [" + pdfFile.getName() + "] has been signed by [" + userFullname + "]");
             }
 
@@ -227,5 +231,9 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
             LogUtil.error(getClassName(), e, e.getMessage());
             return super.getPropertyOptions();
         }
+    }
+
+    protected boolean useTimeStamp() {
+        return "true".equalsIgnoreCase(getPropertyString("useTimeStamp"));
     }
 }

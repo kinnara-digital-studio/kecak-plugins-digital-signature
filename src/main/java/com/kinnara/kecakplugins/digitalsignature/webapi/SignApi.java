@@ -29,6 +29,7 @@ import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.text.ParseException;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -106,15 +107,19 @@ public class SignApi extends ExtDefaultPlugin implements PluginWebSupport, PKCS1
                             // get / generate keystore
                             URL baseUrl = ResourceUtils.getURL(PATH_USER_CERTIFICATE + "/" + username);
                             final File folder = new File(baseUrl.getPath());
-                            final File userKeystoreFile = getLatestKeystore(folder, "certificate." + KEYSTORE_TYPE);
-
+                            final Optional<File> optUserKeystoreFile = optLatestKeystore(folder, USER_KEYSTORE);
                             char[] pass = getPassword();
-                            if (!userKeystoreFile.exists()) {
+
+                            final File userKeystoreFile;
+                            if (optUserKeystoreFile.map(File::exists).orElse(false)) {
+                                userKeystoreFile = optUserKeystoreFile.get();
+                            } else {
+                                userKeystoreFile = getPathCertificateName(folder, USER_KEYSTORE);
                                 generateUserKey(userKeystoreFile, pass, userFullName);
                             }
 
                             //sign PDF
-                            signPdf(userKeystoreFile, pdfFile, userFullName, "Sign", DEFAULT_DN_ORG);
+                            signPdf(userKeystoreFile, pdfFile, userFullName, "Sign", DEFAULT_DN_ORG, false);
                             final String name = pdfFile.getName();
 
                             //write file to output stream

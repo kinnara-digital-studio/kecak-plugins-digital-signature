@@ -58,6 +58,14 @@
         "type": "checkbox",
         "value" : "true",
         "options" : [{ "value" : "true", "label" : ""}]
+      },
+      {
+        "name": "useTimeStamp",
+        "label": "@@digital.signature.useTimeStamp@@",
+        "description": "@@digital.signature.useTimeStamp.desc@@",
+        "type": "checkbox",
+        "value" : "true",
+        "options" : [{ "value" : "true", "label" : ""}]
       }
     ]
   }
