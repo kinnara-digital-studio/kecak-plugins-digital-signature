@@ -97,7 +97,7 @@ public interface PKCS12Utils extends AuditTrailUtil {
     default void generateRootKey(File certificateFile) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException, UnrecoverableKeyException, DigitalCertificateException {
         KeyPair generatedKeyPair = generateKeyPair();
         String subjectDn = getDn(DEFAULT_DN_ROOT_NAME, DEFAULT_DN_ORG_UNIT, DEFAULT_DN_ORG, DEFAULT_DN_LOCALITY, DEFAULT_DN_STATE, DEFAULT_DN_COUNTRY);
-        generatePKCS12(certificateFile, getPassword(), generatedKeyPair, subjectDn, false);
+        generatePKCS12(certificateFile, getPassword(), generatedKeyPair, subjectDn, true);
     }
 
     /**
@@ -198,8 +198,8 @@ public interface PKCS12Utils extends AuditTrailUtil {
     }
 
     default char[] getPassword() {
-        SetupManager sm = (SetupManager) SecurityUtil.getApplicationContext().getBean("setupManager");
-        String password = sm.getSettingValue("securityKey");
+//        SetupManager sm = (SetupManager) SecurityUtil.getApplicationContext().getBean("setupManager");
+        String password = SetupManager.getSettingValue("securityKey");
         return (password.isEmpty() ? DEFAULT_PASSWORD : password).toCharArray();
     }
 

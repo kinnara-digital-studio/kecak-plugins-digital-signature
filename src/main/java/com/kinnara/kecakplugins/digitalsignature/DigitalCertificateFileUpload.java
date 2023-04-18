@@ -125,6 +125,7 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
     public void generateUserKey(File certificateFile, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException, UnrecoverableKeyException, DigitalCertificateException {
         KeyPair generatedKeyPair = generateKeyPair();
         String subjectDn = getDn(userFullname, getOrganizationalUnit(), getOrganization(), getLocality(), getStateOrProvince(), getCountry());
+        LogUtil.info(getClassName(), "subject Dn :" + subjectDn);
         generatePKCS12(certificateFile, pass, generatedKeyPair, subjectDn, false);
     }
 
