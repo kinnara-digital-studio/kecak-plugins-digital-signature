@@ -14,10 +14,12 @@
             </button>
         </div>
 
-        <div class="dropzone well" id="dropzone">
-            <div class="fallback">
-                <input name="file" type="file" multiple="" />
-            </div>
+        <div>
+            <form action="./dummy.html" class="dropzone well" id="dropzone">
+                <div class="fallback">
+                    <input name="file" type="file" multiple="" />
+                </div>
+            </form>
         </div>
 
         <div id="preview-template" class="hide">
@@ -84,8 +86,8 @@
         thumbnailWidth: 120,
         maxFilesize: 0.5,
 
-        //addRemoveLinks : true,
-        //dictRemoveFile: 'Remove',
+        addRemoveLinks : true,
+        dictRemoveFile: 'Remove',
 
         dictDefaultMessage :
         '<span class="bigger-150 bolder"><i class="ace-icon fa fa-caret-right red"></i> Drop files</span> to upload \
@@ -107,7 +109,9 @@
 
       });
 
-
+      myDropzone.on("dragend", function(file) {
+         console.log("ondragend");
+      });
       //simulating upload progress
       var minSteps = 6,
           maxSteps = 60,
@@ -154,6 +158,7 @@
 
     } catch(e) {
       alert('Dropzone.js does not support older browsers!');
+      console.log("Error", e);
     }
 
     });
