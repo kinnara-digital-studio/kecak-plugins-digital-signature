@@ -230,8 +230,8 @@ public interface PKCS12Utils extends AuditTrailUtil {
     }
 
     default char[] getPassword() {
-        SetupManager sm = (SetupManager) SecurityUtil.getApplicationContext().getBean("setupManager");
-        String password = sm.getSettingValue("securityKey");
+//        SetupManager sm = (SetupManager) SecurityUtil.getApplicationContext().getBean("setupManager");
+        String password = SetupManager.getSettingValue("securityKey");
         return (password.isEmpty() ? DEFAULT_PASSWORD : password).toCharArray();
     }
 
@@ -401,8 +401,7 @@ public interface PKCS12Utils extends AuditTrailUtil {
 
         try (PdfReader reader = new PdfReader(src);
              PdfWriter writer = new PdfWriter(tempFile);
-             PdfDocument document = new PdfDocument(reader, writer)) {
-
+             PdfDocument document = new PdfDocument(reader, writer)){
             LogUtil.debug(getClass().getName(), "Creating temp file [" + tempFile.getAbsolutePath() + "]");
         }
 
