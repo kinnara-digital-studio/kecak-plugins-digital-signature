@@ -118,8 +118,8 @@ public class SignApi extends ExtDefaultPlugin implements PluginWebSupport, PKCS1
                                 generateUserKey(userKeystoreFile, pass, userFullName);
                             }
 
-                            //sign PDF
-                            signPdf(userKeystoreFile, pdfFile, userFullName, "Sign", DEFAULT_DN_ORG, false);
+                            //sign PDF without TSA
+                            signPdf(userKeystoreFile, pdfFile, userFullName, "Sign", DEFAULT_DN_ORG, false, null, null, null);
                             final String name = pdfFile.getName();
 
                             //write file to output stream

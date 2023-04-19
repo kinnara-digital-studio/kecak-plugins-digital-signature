@@ -81,7 +81,7 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
                     generateUserKey(userKeystoreFile, pass, userFullname);
                 }
 
-                signPdf(userKeystoreFile, pdfFile, userFullname, getReason(formData),getOrganization(), useTimeStamp());
+                signPdf(userKeystoreFile, pdfFile, userFullname, getReason(formData),getOrganization(), useTimeStamp(), getTsaUrl(), getTsaUsername(), getTsaPassword());
                 LogUtil.info(getClassName(), "Document [" + pdfFile.getName() + "] has been signed by [" + userFullname + "]");
             }
 
@@ -180,8 +180,14 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
     }
 
 
+    /**
+     * Experimental features, currently disabled because corrupting the PDF file
+     *
+     * @return
+     */
     protected boolean overrideSignature() {
-        return "true".equalsIgnoreCase(getPropertyString("override"));
+//        return "true".equalsIgnoreCase(getPropertyString("override"));
+        return false;
     }
 
     @Override
@@ -235,5 +241,18 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
 
     protected boolean useTimeStamp() {
         return "true".equalsIgnoreCase(getPropertyString("useTimeStamp"));
+    }
+
+
+    protected String getTsaUrl() {
+        return getPropertyString("tsaUrl");
+    }
+
+    protected String getTsaUsername() {
+        return getPropertyString("tsaUsername");
+    }
+
+    protected String getTsaPassword() {
+        return getPropertyString("tsaPassword");
     }
 }

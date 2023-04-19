@@ -33,19 +33,6 @@
         "type": "textfield"
       },
       {
-        "name": "override",
-        "label": "@@digitalCertificate.override@@",
-        "description": "@@digitalCertificate.override.desc@@",
-        "type": "checkbox",
-        "value": "true",
-        "options": [
-          {
-            "value": "true",
-            "label": ""
-          }
-        ]
-      },
-      {
         "label": "@@digital.signature.fields@@",
         "type": "header"
       },
@@ -54,6 +41,32 @@
         "label": "@@digital.signature.reason@@",
         "description": "@@digital.signature.reason.desc@@",
         "type": "textfield"
+      },
+      {
+        "name": "override",
+        "label": "@@digital.signature.override@@",
+        "description": "@@digital.signature.override.desc@@",
+        "type": "hidden",
+        "value" : "false"
+      },
+      {
+        "label": "@@digital.signature.tsaHeader@@",
+        "type": "header"
+      },
+      {
+        "name": "tsaUrl",
+        "label": "@@digital.signature.tsaUrl@@",
+        "type": "textfield"
+      },
+      {
+        "name": "tsaUsername",
+        "label": "@@digital.signature.tsaUsername@@",
+        "type": "textfield"
+      },
+      {
+        "name": "tsaPassword",
+        "label": "@@digital.signature.tsaPassword@@",
+        "type": "password"
       }
     ]
   }

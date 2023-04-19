@@ -1,14 +1,18 @@
 package com.kinnara.kecakplugins.digitalsignature.util;
 
+import com.itextpdf.bouncycastle.cert.ocsp.BasicOCSPRespBC;
+import com.itextpdf.commons.bouncycastle.cert.ocsp.IBasicOCSPResp;
 import com.itextpdf.forms.PdfAcroForm;
-import com.itextpdf.kernel.pdf.PdfDocument;
-import com.itextpdf.kernel.pdf.PdfReader;
-import com.itextpdf.kernel.pdf.PdfWriter;
-import com.itextpdf.kernel.pdf.StampingProperties;
+import com.itextpdf.kernel.pdf.*;
 import com.itextpdf.signatures.*;
 import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateException;
 import com.kinnara.kecakplugins.digitalsignature.webapi.GetTimeStampApi;
+import com.kinnarastudio.commons.Try;
+import com.lowagie.text.pdf.TSAClient;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import com.lowagie.text.DocumentException;
+import com.lowagie.text.pdf.AcroFields;
+import com.lowagie.text.pdf.PdfStamper;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.ExtendedKeyUsage;
 import org.bouncycastle.asn1.x509.KeyPurposeId;
@@ -46,6 +50,7 @@ import java.security.cert.X509Certificate;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public interface PKCS12Utils extends AuditTrailUtil {
@@ -66,6 +71,9 @@ public interface PKCS12Utils extends AuditTrailUtil {
     String DEFAULT_DN_STATE = "West Java";
     String DEFAULT_DN_COUNTRY = "ID";
 
+    String LOCAL_TSA_URL = "http://localhost:8080/web/json/plugin/" + GetTimeStampApi.class.getName() + "/service";
+
+
     /**
      * @param keystoreFile
      * @param certificate
@@ -83,10 +91,11 @@ public interface PKCS12Utils extends AuditTrailUtil {
             KeyStore pkcs12KeyStore = KeyStore.getInstance(KEYSTORE_TYPE);
             pkcs12KeyStore.load(null, null);
             KeyStore.Entry entry;
-            String alias = "Kecak";
+            String alias;
             if (root == null) {
                 entry = new KeyStore.PrivateKeyEntry(privateKey,
                         new Certificate[]{certificate});
+                alias = "Kecak Workflow";
             } else {
                 entry = new KeyStore.PrivateKeyEntry(privateKey,
                         new Certificate[]{certificate, root});
@@ -198,8 +207,9 @@ public interface PKCS12Utils extends AuditTrailUtil {
             LogUtil.error(getClass().getName(), e, e.getMessage());
         }
 
-        ContentSigner contentSigner = new JcaContentSignerBuilder(SIGNATURE_ALGORITHM).setProvider(
-                bcProvider).build(issuerPrivateKey);
+        ContentSigner contentSigner = new JcaContentSignerBuilder(SIGNATURE_ALGORITHM)
+                .setProvider(bcProvider)
+                .build(issuerPrivateKey);
 
         X509CertificateHolder certificateHolder = certificateBuilder.build(contentSigner);
 
@@ -291,7 +301,7 @@ public interface PKCS12Utils extends AuditTrailUtil {
         return generator.generateKeyPair();
     }
 
-    default void signPdf(File userKeystoreFile, File pdfFile, String userFullname, String reason, String organization, boolean useTimeStamp) throws IOException, GeneralSecurityException, DigitalCertificateException {
+    default void signPdf(File userKeystoreFile, File pdfFile, String userFullname, String reason, String organization, boolean useTimeStamp, String tsaUrl, String tsaUsername, String tsaPassword) throws IOException, GeneralSecurityException, DigitalCertificateException {
         executeAuditTrail("signPdf", userKeystoreFile, pdfFile, userFullname, reason, organization);
 
         char[] pass = getPassword();
@@ -305,30 +315,17 @@ public interface PKCS12Utils extends AuditTrailUtil {
             Provider provider = new BouncyCastleProvider();
             Security.addProvider(provider);
 
-            final String tsaUrl = "http://localhost:8080/web/json/plugin/" + GetTimeStampApi.class.getName() + "/service";
-
-            TSAClientBouncyCastle tsaClient;
+            final ITSAClient tsaClient;
             if (useTimeStamp) {
-                tsaClient = new TSAClientBouncyCastle(tsaUrl) {
-                    @Override
-                    protected byte[] getTSAResponse(byte[] requestBytes) throws IOException {
-                        try {
-                            return getTimeStampResponse(requestBytes);
-                        } catch (UnrecoverableKeyException | CertificateException | NoSuchAlgorithmException |
-                                 KeyStoreException | ParseException | TSPException | OperatorCreationException |
-                                 DigitalCertificateException e) {
-                            return null;
-                        }
-                    }
-                };
+                tsaClient = getTsaClient(tsaUrl, tsaUsername, tsaPassword);
             } else {
                 tsaClient = null;
             }
 
+            IOcspClient ocspClient = getOcspClient();
 
             signPdf(userFullname, pdfFile, pdfFile, chain, privateKey, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
-                    reason, organization, null, null, tsaClient, 0);
-
+                    reason, organization, null, ocspClient, tsaClient, 0);
         }
     }
 
@@ -367,9 +364,9 @@ public interface PKCS12Utils extends AuditTrailUtil {
              OutputStream fos = Files.newOutputStream(destPdfFile.toPath())) {
 
             PdfSigner signer = new PdfSigner(reader, fos, new StampingProperties().useAppendMode());
-
             signer.setFieldName(name);
             signer.setSignDate(Calendar.getInstance());
+
             PdfSignatureAppearance signatureAppearance = signer.getSignatureAppearance();
             signatureAppearance.setReason(reason).setLocation(location);
 
@@ -409,6 +406,21 @@ public interface PKCS12Utils extends AuditTrailUtil {
             LogUtil.debug(getClass().getName(), "Creating temp file [" + tempFile.getAbsolutePath() + "]");
         }
 
+//        try(
+////             PdfReader readerTemp = new PdfReader(tempFile);
+//             PdfWriter writerDest = new PdfWriter(dest)) {
+//
+//            com.lowagie.text.pdf.PdfReader readerAcro = new com.lowagie.text.pdf.PdfReader(tempFile.toURL());
+//            AcroFields acroFields = readerAcro.getAcroFields();
+//            LogUtil.info(getClass().getName(), "Test acro : " + acroFields.getSignatureNames().get(1));
+//            LogUtil.info(getClass().getName(), "Signature name : " + signatureName);
+//            acroFields.removeField(signatureName);
+//            PdfStamper pdfStamper = new PdfStamper(readerAcro, writerDest);
+//            pdfStamper.close();
+//        } catch (DocumentException e) {
+//            LogUtil.error(getClass().getName(), e, e.getMessage());
+//        }
+
         try (PdfReader reader = new PdfReader(tempFile);
              PdfWriter writer = new PdfWriter(dest);
              PdfDocument pdfDocument = new PdfDocument(reader, writer)) {
@@ -429,17 +441,6 @@ public interface PKCS12Utils extends AuditTrailUtil {
     }
 
     default TimeStampResponse getTimeStampResponse(TimeStampRequest timeStampRequest) throws UnrecoverableKeyException, CertificateException, NoSuchAlgorithmException, KeyStoreException, IOException, ParseException, OperatorCreationException, DigitalCertificateException, TSPException {
-
-//            TimeStampRequestGenerator tsRequestGenerator = new TimeStampRequestGenerator();
-//            tsRequestGenerator.setCertReq(true);
-//            TimeStampRequest tsRequest = tsRequestGenerator.generate();
-
-
-//            // validate the timestamp request
-//            if (!timeStampRequest.validate(new BcDigestCalculatorProvider())) {
-//                throw new ApiException(HttpServletResponse.SC_BAD_REQUEST, "Invalid timestamp request");
-//            }
-
         JcaSimpleSignerInfoGeneratorBuilder signerInfoGeneratorBuilder = new JcaSimpleSignerInfoGeneratorBuilder();
 
         final File pathRoot = new File(PATH_ROOT);
@@ -474,5 +475,62 @@ public interface PKCS12Utils extends AuditTrailUtil {
 
         Date now = new Date();
         return responseGenerator.generate(timeStampRequest, BigInteger.valueOf(now.getTime()), now);
+    }
+
+    default ITSAClient getTsaClient(String url, String username, String password) {
+        return new TSAClientBouncyCastle(url, username, password) {
+
+            /**
+             * Bypassing Http URL connection since api {@link GetTimeStampApi}
+             * uses the same {@link PKCS12Utils#getTimeStampResponse(byte[])} library
+             *
+             * @param requestBytes is a byte representation of TSA request
+             *
+             * @return
+             * @throws IOException
+             */
+            @Override
+            protected byte[] getTSAResponse(byte[] requestBytes) throws IOException {
+                // handle with default implementation
+                if (url != null && !url.isEmpty()) {
+                    return super.getTSAResponse(requestBytes);
+                }
+
+                // use current server as TSA, bypass request through API
+                else {
+                    try {
+                        return getTimeStampResponse(requestBytes);
+                    } catch (UnrecoverableKeyException | CertificateException | NoSuchAlgorithmException |
+                             KeyStoreException | ParseException | TSPException | OperatorCreationException |
+                             DigitalCertificateException e) {
+
+                        LogUtil.error(getClass().getName(), e, "Error bypassing getTSAResponse, try to use HTTP connection");
+                        return super.getTSAResponse(requestBytes);
+                    }
+                }
+            }
+        };
+    }
+
+    default IOcspClient getOcspClient() {
+        return null;
+//        try (PdfReader reader = new PdfReader(pdfFile);
+//             PdfDocument document = new PdfDocument(reader)) {
+//
+//            SignatureUtil signatureUtil = new SignatureUtil(document);
+//            List<IBasicOCSPResp> ocsps = signatureUtil.getSignatureNames().stream()
+//                    .map(signatureUtil::readSignatureData)
+//                    .map(PdfPKCS7::getOcsp)
+//                    .map(o -> (BasicOCSPRespBC) o)
+//                    .map(BasicOCSPRespBC::getBasicOCSPResp)
+//                    .map(BasicOCSPRespBC::new)
+//                    .collect(Collectors.toList());
+//
+//            OCSPVerifier ocspVerifier = new OCSPVerifier(null, ocsps);
+//            return new OcspClientBouncyCastle(ocspVerifier);
+//        } catch (Exception e) {
+//            LogUtil.error(getClass().getName(), e, e.getMessage());
+//            return null;
+//        }
     }
 }

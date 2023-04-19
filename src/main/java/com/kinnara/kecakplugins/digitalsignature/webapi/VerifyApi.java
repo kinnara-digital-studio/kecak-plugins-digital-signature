@@ -10,6 +10,7 @@ import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateVer
 import com.kinnara.kecakplugins.digitalsignature.util.PKCS12Utils;
 import com.kinnara.kecakplugins.digitalsignature.util.Unclutter;
 import com.kinnarastudio.commons.Try;
+import org.bouncycastle.cert.ocsp.BasicOCSPResp;
 import org.javatuples.Pair;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.commons.util.FileManager;
@@ -220,7 +221,9 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
             throws GeneralSecurityException, IOException {
         List<IBasicOCSPResp> ocsps = new ArrayList<>();
         if (pkcs7.getOcsp() != null) {
-            ocsps.add(new BasicOCSPRespBC(((BasicOCSPRespBC) pkcs7.getOcsp()).getBasicOCSPResp()));
+            BasicOCSPRespBC bcOcspResp = (BasicOCSPRespBC) pkcs7.getOcsp();
+            BasicOCSPResp ocspResp = bcOcspResp.getBasicOCSPResp();
+            ocsps.add(new BasicOCSPRespBC(ocspResp));
         }
 
 //        CertificateVerifier verifier = new CertificateVerifier( );

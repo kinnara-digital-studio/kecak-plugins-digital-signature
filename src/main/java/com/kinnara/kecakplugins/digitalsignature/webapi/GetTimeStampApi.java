@@ -2,15 +2,8 @@ package com.kinnara.kecakplugins.digitalsignature.webapi;
 
 import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateException;
 import com.kinnara.kecakplugins.digitalsignature.util.PKCS12Utils;
-import org.bouncycastle.asn1.ASN1ObjectIdentifier;
-import org.bouncycastle.cert.ocsp.CertificateID;
-import org.bouncycastle.cms.SignerInfoGenerator;
-import org.bouncycastle.cms.jcajce.JcaSimpleSignerInfoGeneratorBuilder;
-import org.bouncycastle.operator.DigestCalculator;
 import org.bouncycastle.operator.OperatorCreationException;
-import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder;
-import org.bouncycastle.tsp.*;
-import org.javatuples.Pair;
+import org.bouncycastle.tsp.TSPException;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.commons.util.LogUtil;
 import org.joget.plugin.base.ExtDefaultPlugin;
@@ -22,20 +15,11 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.math.BigInteger;
 import java.security.GeneralSecurityException;
-import java.security.PrivateKey;
-import java.security.cert.Certificate;
-import java.security.cert.X509Certificate;
 import java.text.ParseException;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.Optional;
 import java.util.ResourceBundle;
-import java.util.stream.Stream;
 
 public class GetTimeStampApi extends ExtDefaultPlugin implements PluginWebSupport, PKCS12Utils {
     @Override
@@ -61,6 +45,11 @@ public class GetTimeStampApi extends ExtDefaultPlugin implements PluginWebSuppor
             final String method = request.getMethod();
             if(!"POST".equalsIgnoreCase(method)) {
                 throw new ApiException(HttpServletResponse.SC_METHOD_NOT_ALLOWED, "Method [" + method + "] is not supported");
+            }
+
+            final String contentType = request.getContentType();
+            if(!"application/timestamp-query".equalsIgnoreCase(contentType)) {
+                throw new ApiException(HttpServletResponse.SC_BAD_REQUEST, "Content type [" + contentType + "] is not supported");
             }
 
             // read the timestamp request from the request body

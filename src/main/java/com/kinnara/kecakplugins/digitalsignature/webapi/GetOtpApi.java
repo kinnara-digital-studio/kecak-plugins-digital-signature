@@ -95,7 +95,7 @@ public class GetOtpApi extends ExtDefaultPlugin implements PluginWebSupport, Otp
                 throw new ApiException(HttpServletResponse.SC_BAD_REQUEST, "Error generating OTP");
             }
 
-            servletResponse.setStatus(HttpServletResponse.SC_ACCEPTED);
+            servletResponse.setStatus(HttpServletResponse.SC_CREATED);
 
         } catch (ApiException e) {
             LogUtil.error(getClass().getName(), e, e.getMessage());

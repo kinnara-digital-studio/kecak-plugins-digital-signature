@@ -78,7 +78,7 @@ public class DigitalSignElementBinder extends FormBinder implements FormStoreBin
                     generateUserKey(userKeystore, password, userFullName);
                 }
 
-                signPdf(userKeystore, pdfFile, userFullName, getReason(formData), getOrganization(), useTimeStamp());
+                signPdf(userKeystore, pdfFile, userFullName, getReason(formData), getOrganization(), useTimeStamp(), getTsaUrl(), getTsaUsername(), getTsaPassword());
             }
         } catch (IOException | DigitalCertificateException | ParseException |
                  GeneralSecurityException | OperatorCreationException e) {
@@ -134,8 +134,14 @@ public class DigitalSignElementBinder extends FormBinder implements FormStoreBin
                 .orElseThrow(() -> new DigitalCertificateException("File not found"));
     }
 
+    /**
+     * Experimental features, currently disabled because corrupting the PDF file
+     *
+     * @return
+     */
     protected boolean overrideSignature() {
-        return getPropertyString("override").equalsIgnoreCase("true");
+//        return "true".equalsIgnoreCase(getPropertyString("override"));
+        return false;
     }
 
     protected String getReason(FormData formData) throws DigitalCertificateException {
@@ -224,5 +230,18 @@ public class DigitalSignElementBinder extends FormBinder implements FormStoreBin
 
     protected boolean useTimeStamp() {
         return "true".equalsIgnoreCase(getPropertyString("useTimeStamp"));
+    }
+
+    protected String getTsaUrl() {
+        return getPropertyString("tsaUrl");
+    }
+
+
+    protected String getTsaUsername() {
+        return getPropertyString("tsaUsername");
+    }
+
+    protected String getTsaPassword() {
+        return getPropertyString("tsaPassword");
     }
 }

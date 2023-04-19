@@ -55,9 +55,8 @@
         "name": "override",
         "label": "@@digital.signature.override@@",
         "description": "@@digital.signature.override.desc@@",
-        "type": "checkbox",
-        "value" : "true",
-        "options" : [{ "value" : "true", "label" : ""}]
+        "type": "hidden",
+        "value" : "false"
       },
       {
         "name": "useTimeStamp",
@@ -66,6 +65,36 @@
         "type": "checkbox",
         "value" : "true",
         "options" : [{ "value" : "true", "label" : ""}]
+      },
+      {
+        "label": "@@digital.signature.tsaHeader@@",
+        "type": "header",
+        "control_field": "useTimeStamp",
+        "control_value": "true"
+      },
+      {
+        "name": "tsaUrl",
+        "label": "@@digital.signature.tsaUrl@@",
+        "description": "@@digital.signature.tsaUrl.desc@@",
+        "type": "textfield",
+        "control_field": "useTimeStamp",
+        "control_value": "true"
+      },
+      {
+        "name": "tsaUsername",
+        "label": "@@digital.signature.tsaUsername@@",
+        "description": "@@digital.signature.tsaUsername.desc@@",
+        "type": "textfield",
+        "control_field": "useTimeStamp",
+        "control_value": "true"
+      },
+      {
+        "name": "tsaPassword",
+        "label": "@@digital.signature.tsaPassword@@",
+        "description": "@@digital.signature.tsaPassword.desc@@",
+        "type": "password",
+        "control_field": "useTimeStamp",
+        "control_value": "true"
       }
     ]
   }
