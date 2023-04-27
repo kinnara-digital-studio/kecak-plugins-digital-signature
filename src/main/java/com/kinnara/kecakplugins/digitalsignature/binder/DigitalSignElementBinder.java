@@ -69,12 +69,16 @@ public class DigitalSignElementBinder extends FormBinder implements FormStoreBin
                     keystoreFolder.mkdir();
                 }
 
-                final File userKeystore = getLatestKeystore(keystoreFolder, "certificate." + KEYSTORE_TYPE);
-                if (!userKeystore.exists()) {
+                final Optional<File> optUserKeystore = optLatestKeystore(keystoreFolder, USER_KEYSTORE);
+                final File userKeystore;
+                if (optUserKeystore.map(File::exists).orElse(false)) {
+                    userKeystore = optUserKeystore.get();
+                } else {
+                    userKeystore = getPathCertificateName(keystoreFolder, USER_KEYSTORE);
                     generateUserKey(userKeystore, password, userFullName);
                 }
 
-                signPdf(userKeystore, pdfFile, userFullName, getReason(formData), getOrganization());
+                signPdf(userKeystore, pdfFile, userFullName, getReason(formData), getOrganization(), useTimeStamp(), getTsaUrl(), getTsaUsername(), getTsaPassword());
             }
         } catch (IOException | DigitalCertificateException | ParseException |
                  GeneralSecurityException | OperatorCreationException e) {
@@ -114,7 +118,7 @@ public class DigitalSignElementBinder extends FormBinder implements FormStoreBin
 
     @Override
     public String getPropertyOptions() {
-        return AppUtil.readPluginResource(getClass().getName(), "/properties/SignElementBinder.json", null, true, "/message/DigitalSignature");
+        return AppUtil.readPluginResource(getClass().getName(), "/properties/DigitalSignElementBinder.json", null, true, "/message/DigitalSignature");
     }
 
     protected String getPdfFileName(Element element, FormData formData) throws DigitalCertificateException {
@@ -130,8 +134,14 @@ public class DigitalSignElementBinder extends FormBinder implements FormStoreBin
                 .orElseThrow(() -> new DigitalCertificateException("File not found"));
     }
 
+    /**
+     * Experimental features, currently disabled because corrupting the PDF file
+     *
+     * @return
+     */
     protected boolean overrideSignature() {
-        return getPropertyString("override").equalsIgnoreCase("true");
+//        return "true".equalsIgnoreCase(getPropertyString("override"));
+        return false;
     }
 
     protected String getReason(FormData formData) throws DigitalCertificateException {
@@ -216,5 +226,22 @@ public class DigitalSignElementBinder extends FormBinder implements FormStoreBin
         KeyPair generatedKeyPair = generateKeyPair();
         String subjectDn = getDn(userFullname, getOrganizationalUnit().replace(",", " "), getOrganization().replace(",", " "), getLocality().replace(",", " "), getStateOrProvince().replace(",", " "), getCountry().replace(",", " "));
         generatePKCS12(userKeystore, pass, generatedKeyPair, subjectDn, false);
+    }
+
+    protected boolean useTimeStamp() {
+        return "true".equalsIgnoreCase(getPropertyString("useTimeStamp"));
+    }
+
+    protected String getTsaUrl() {
+        return getPropertyString("tsaUrl");
+    }
+
+
+    protected String getTsaUsername() {
+        return getPropertyString("tsaUsername");
+    }
+
+    protected String getTsaPassword() {
+        return getPropertyString("tsaPassword");
     }
 }

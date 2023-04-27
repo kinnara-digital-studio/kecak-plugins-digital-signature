@@ -18,7 +18,7 @@ import java.util.stream.StreamSupport;
 
 /**
  * @@author aristo
- *
+ * <p>
  * Common library to handle repetition code
  */
 public interface Unclutter {
@@ -135,6 +135,7 @@ public interface Unclutter {
 
 
     // JSON
+
     /**
      * Stream JSONArray
      *
@@ -148,7 +149,7 @@ public interface Unclutter {
                 .boxed()
                 .map(throwableFunction(jsonArray::get))
                 .filter(Objects::nonNull)
-                .map(throwableFunction(o -> (R)o))
+                .map(throwableFunction(o -> (R) o))
                 .filter(Objects::nonNull);
     }
 
@@ -161,13 +162,13 @@ public interface Unclutter {
     default Stream<String> jsonStream(JSONObject jsonObject) {
         return Optional.ofNullable(jsonObject)
                 .map(json -> StreamSupport.stream(Spliterators.spliteratorUnknownSize(
-                        (Iterator<String>)json.keys(), 0), false))
+                        (Iterator<String>) json.keys(), 0), false))
                 .orElseGet(Stream::empty);
     }
 
     // Throwable methods
+
     /**
-     *
      * @param throwableSupplier
      * @param <R>
      * @param <E>
@@ -192,7 +193,6 @@ public interface Unclutter {
     }
 
     /**
-     *
      * @param throwableConsumer
      * @param failoverConsumer
      * @param <T>
@@ -226,7 +226,6 @@ public interface Unclutter {
     }
 
     /**
-     *
      * @param throwableFunction
      * @param failoverFunction
      * @param <T>
@@ -239,7 +238,6 @@ public interface Unclutter {
     }
 
     /**
-     *
      * @param throwableFunction
      * @param failoverFunction
      * @param <T>
@@ -252,7 +250,6 @@ public interface Unclutter {
     }
 
     /**
-     *
      * @param throwablePredicate
      * @param <T>
      * @param <E>
@@ -401,7 +398,7 @@ public interface Unclutter {
                 try {
                     acceptThrowable(t, u);
                 } catch (Exception e) {
-                    consumer.accept((E)e);
+                    consumer.accept((E) e);
                 }
             };
 
@@ -434,7 +431,7 @@ public interface Unclutter {
                 try {
                     return testThrowable(t);
                 } catch (Exception e) {
-                    return predicate.test((E)e);
+                    return predicate.test((E) e);
                 }
             };
         }
@@ -445,6 +442,6 @@ public interface Unclutter {
     }
 
     default String getParameter(HttpServletRequest request, String parameterName) throws ApiException {
-        return optParameter(request, parameterName).orElseThrow(() -> new ApiException(HttpServletResponse.SC_BAD_REQUEST, "Parameter ["+parameterName+"] is required"));
+        return optParameter(request, parameterName).orElseThrow(() -> new ApiException(HttpServletResponse.SC_BAD_REQUEST, "Parameter [" + parameterName + "] is required"));
     }
 }
