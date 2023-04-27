@@ -130,6 +130,7 @@ public interface PKCS12Utils extends AuditTrailUtil {
             File rootKeystoreFile = getLatestKeystore(rootKeystoreFolder, ROOT_KEYSTORE);
             if(!rootKeystoreFile.exists()) {
                 generateRootKey(rootKeystoreFile);
+                rootKeystoreFile = getLatestKeystore(rootKeystoreFolder, ROOT_KEYSTORE);
             }
 
             try (InputStream rootKeystoreInputStream = Files.newInputStream(rootKeystoreFile.toPath())) {

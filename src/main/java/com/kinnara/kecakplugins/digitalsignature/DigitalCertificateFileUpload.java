@@ -57,7 +57,6 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
 //            boolean override = overrideSignature();
 
             boolean toSign = false;
-            LogUtil.info(getClassName(), "Test 1");
             if (!signed) {
                 toSign = true;
             }
@@ -125,7 +124,6 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
     public void generateUserKey(File certificateFile, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException, UnrecoverableKeyException, DigitalCertificateException {
         KeyPair generatedKeyPair = generateKeyPair();
         String subjectDn = getDn(userFullname.replace(",", " "), getOrganizationalUnit().replace(",", " "), getOrganization().replace(",", " "), getLocality().replace(",", " "), getStateOrProvince().replace(",", " "), getCountry().replace(",", " "));
-        LogUtil.info(getClassName(), "subject Dn :" + subjectDn);
         generatePKCS12(certificateFile, pass, generatedKeyPair, subjectDn, false);
     }
 
