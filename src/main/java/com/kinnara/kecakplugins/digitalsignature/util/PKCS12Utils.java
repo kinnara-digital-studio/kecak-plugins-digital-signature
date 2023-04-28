@@ -5,10 +5,12 @@ import com.itextpdf.commons.bouncycastle.cert.ocsp.IBasicOCSPResp;
 import com.itextpdf.forms.PdfAcroForm;
 import com.itextpdf.kernel.pdf.*;
 import com.itextpdf.signatures.*;
+import com.kinnara.kecakplugins.digitalsignature.AdobeLtvEnabling;
 import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateException;
 import com.kinnara.kecakplugins.digitalsignature.webapi.GetTimeStampApi;
 import com.kinnarastudio.commons.Try;
 import com.lowagie.text.pdf.TSAClient;
+import org.apache.commons.io.IOUtils;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import com.lowagie.text.DocumentException;
 import com.lowagie.text.pdf.AcroFields;
@@ -24,15 +26,18 @@ import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
 import org.bouncycastle.cert.ocsp.CertificateID;
+import org.bouncycastle.cert.ocsp.OCSPException;
 import org.bouncycastle.cms.SignerInfoGenerator;
 import org.bouncycastle.cms.jcajce.JcaSimpleSignerInfoGeneratorBuilder;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.DigestCalculator;
 import org.bouncycastle.operator.OperatorCreationException;
+import org.bouncycastle.operator.OperatorException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder;
 import org.bouncycastle.tsp.*;
+import org.bouncycastle.x509.util.StreamParsingException;
 import org.javatuples.Pair;
 import org.joget.commons.util.LogUtil;
 import org.joget.commons.util.SecurityUtil;
@@ -156,7 +161,6 @@ public interface PKCS12Utils extends AuditTrailUtil {
             } else {
                 rootKeystoreFile = getPathCertificateName(pathRoot, ROOT_KEYSTORE);
                 generateRootKey(rootKeystoreFile);
-                rootKeystoreFile = getLatestKeystore(rootKeystoreFolder, ROOT_KEYSTORE);
             }
 
             try (InputStream rootKeystoreInputStream = Files.newInputStream(rootKeystoreFile.toPath())) {
@@ -231,8 +235,8 @@ public interface PKCS12Utils extends AuditTrailUtil {
     }
 
     default char[] getPassword() {
-//        SetupManager sm = (SetupManager) SecurityUtil.getApplicationContext().getBean("setupManager");
-        String password = SetupManager.getSettingValue("securityKey");
+        SetupManager sm = (SetupManager) SecurityUtil.getApplicationContext().getBean("setupManager");
+        String password = sm.getSettingValue("securityKey");
         return (password.isEmpty() ? DEFAULT_PASSWORD : password).toCharArray();
     }
 
@@ -327,6 +331,7 @@ public interface PKCS12Utils extends AuditTrailUtil {
 
             signPdf(userFullname, pdfFile, pdfFile, chain, privateKey, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
                     reason, organization, null, ocspClient, tsaClient, 0);
+            makeLtvEnable(pdfFile, pdfFile);
         }
     }
 
@@ -374,8 +379,36 @@ public interface PKCS12Utils extends AuditTrailUtil {
             IExternalSignature pks = new PrivateKeySignature(pk, digestAlgorithm, provider);
             IExternalDigest digest = new BouncyCastleDigest();
 
+            //ltvEnable
+//            AdobeLtvEnabling adobeLtvEnabling = new AdobeLtvEnabling(pdfDocument);
+//            IOcspClient ocsp = new OcspClientBouncyCastle(null);
+//            ICrlClient crl = new CrlClientOnline();
+//            adobeLtvEnabling.enable(ocsp, crl);
+
             // Sign the document using the detached mode, CMS or CAdES equivalent.
             signer.signDetached(digest, pks, chain, crlList, ocspClient, tsaClient, estimatedSize, subFilter);
+        }
+    }
+
+    default void ltvEnable(PdfSigner signer, ByteArrayOutputStream baos, OutputStream os, String name,
+                                  OcspClientBouncyCastle ocspClient, CrlClientOnline crlClient, ITSAClient tsc) {
+        ByteArrayInputStream signedPdfInput = new ByteArrayInputStream(baos.toByteArray());
+        try {
+            PdfReader pdfReader = new PdfReader(signedPdfInput);
+            PdfDocument document = new PdfDocument(pdfReader.setUnethicalReading(true), new PdfWriter(os),
+                    new StampingProperties().useAppendMode());
+            LtvVerification ltvVerification = new LtvVerification(document);
+            ltvVerification.addVerification(name, ocspClient, crlClient, LtvVerification.CertificateOption.WHOLE_CHAIN,
+                    LtvVerification.Level.OCSP_CRL, LtvVerification.CertificateInclusion.YES);
+            ltvVerification.merge();
+            document.getCatalog().getPdfObject().getAsDictionary(PdfName.DSS).getAsArray(PdfName.Certs)
+                    .add(new PdfStream(
+                            IOUtils.toByteArray(getClass().getClassLoader().getResourceAsStream("HPARCA_CA.cer"))));
+            document.close();
+            pdfReader.close();
+
+        } catch (IOException | GeneralSecurityException e) {
+            LogUtil.error(getClass().getName(), e, "Error while making signature ltv enabled");
         }
     }
 
@@ -533,4 +566,30 @@ public interface PKCS12Utils extends AuditTrailUtil {
 //            return null;
 //        }
     }
+
+    default void makeLtvEnable(File sourcePdfFile, File destPdfFile) throws IOException {
+        final Date now = new Date();
+        final File tempFile = new File(destPdfFile.getAbsolutePath() + ".temp" + new SimpleDateFormat(DATETIME_FORMAT).format(now));
+        LogUtil.info(getClass().getName(), "test LTV Enabling ...");
+        try (PdfReader reader = new PdfReader(sourcePdfFile);
+             PdfWriter writer = new PdfWriter(tempFile);
+             PdfDocument document = new PdfDocument(reader, writer)) {
+
+            LogUtil.debug(getClass().getName(), "Creating temp file [" + tempFile.getAbsolutePath() + "]");
+        }
+
+        try (   PdfReader pdfReader = new PdfReader(tempFile);
+                PdfWriter pdfWriter = new PdfWriter(destPdfFile);
+                PdfDocument pdfDocument = new PdfDocument(pdfReader, pdfWriter,
+                        new StampingProperties().preserveEncryption().useAppendMode())) {
+            AdobeLtvEnabling adobeLtvEnabling = new AdobeLtvEnabling(pdfDocument);
+            IOcspClient ocsp = new OcspClientBouncyCastle(null);
+            ICrlClient crl = new CrlClientOnline();
+            adobeLtvEnabling.enable(ocsp, crl);
+        } catch (OCSPException | GeneralSecurityException | StreamParsingException | IOException | OperatorException e) {
+            LogUtil.error(getClass().getName(), e, e.getMessage());
+        }
+
+    }
+
 }
