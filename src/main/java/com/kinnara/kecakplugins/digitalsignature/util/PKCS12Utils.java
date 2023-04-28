@@ -208,8 +208,9 @@ public interface PKCS12Utils extends AuditTrailUtil {
 
         try {
             certificateBuilder.addExtension(X509Extension.extendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeId.id_kp_timeStamping));
+            LogUtil.info(getClass().getName(), "EXTENDEDKEYUSAGE SUCCESS");
         } catch (CertIOException e) {
-            LogUtil.error(getClass().getName(), e, e.getMessage());
+            LogUtil.error(getClass().getName(), e, "ERROR EXTENDEDKEYUSAGE : " + e.getMessage());
         }
 
         ContentSigner contentSigner = new JcaContentSignerBuilder(SIGNATURE_ALGORITHM)
@@ -235,8 +236,8 @@ public interface PKCS12Utils extends AuditTrailUtil {
     }
 
     default char[] getPassword() {
-        SetupManager sm = (SetupManager) SecurityUtil.getApplicationContext().getBean("setupManager");
-        String password = sm.getSettingValue("securityKey");
+//        SetupManager sm = (SetupManager) SecurityUtil.getApplicationContext().getBean("setupManager");
+        String password = SetupManager.getSettingValue("securityKey");
         return (password.isEmpty() ? DEFAULT_PASSWORD : password).toCharArray();
     }
 
@@ -327,11 +328,13 @@ public interface PKCS12Utils extends AuditTrailUtil {
                 tsaClient = null;
             }
 
+            LogUtil.info(getClass().getName(), "TSA Client : " + tsaClient);
+
             IOcspClient ocspClient = getOcspClient();
 
             signPdf(userFullname, pdfFile, pdfFile, chain, privateKey, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
                     reason, organization, null, ocspClient, tsaClient, 0);
-            makeLtvEnable(pdfFile, pdfFile);
+//            makeLtvEnable(pdfFile, pdfFile);
         }
     }
 
@@ -356,6 +359,9 @@ public interface PKCS12Utils extends AuditTrailUtil {
                          String reason, String location, Collection<ICrlClient> crlList,
                          IOcspClient ocspClient, ITSAClient tsaClient, int estimatedSize) throws IOException, GeneralSecurityException {
 
+        //ltvEnable
+        makeLtvEnable(sourcePdfFile, destPdfFile);
+
         final Date now = new Date();
         final File tempFile = new File(destPdfFile.getAbsolutePath() + ".temp" + new SimpleDateFormat(DATETIME_FORMAT).format(now));
 
@@ -367,9 +373,13 @@ public interface PKCS12Utils extends AuditTrailUtil {
         }
 
         try (PdfReader reader = new PdfReader(tempFile);
+//             PdfWriter writer = new PdfWriter(destPdfFile);
+//             PdfDocument pdfDocument = new PdfDocument(reader, writer);
+             PdfReader pdfReader = new PdfReader(tempFile);
              OutputStream fos = Files.newOutputStream(destPdfFile.toPath())) {
 
-            PdfSigner signer = new PdfSigner(reader, fos, new StampingProperties().useAppendMode());
+
+            PdfSigner signer = new PdfSigner(pdfReader, fos, new StampingProperties().useAppendMode());
             signer.setFieldName(name);
             signer.setSignDate(Calendar.getInstance());
 
@@ -378,12 +388,6 @@ public interface PKCS12Utils extends AuditTrailUtil {
 
             IExternalSignature pks = new PrivateKeySignature(pk, digestAlgorithm, provider);
             IExternalDigest digest = new BouncyCastleDigest();
-
-            //ltvEnable
-//            AdobeLtvEnabling adobeLtvEnabling = new AdobeLtvEnabling(pdfDocument);
-//            IOcspClient ocsp = new OcspClientBouncyCastle(null);
-//            ICrlClient crl = new CrlClientOnline();
-//            adobeLtvEnabling.enable(ocsp, crl);
 
             // Sign the document using the detached mode, CMS or CAdES equivalent.
             signer.signDetached(digest, pks, chain, crlList, ocspClient, tsaClient, estimatedSize, subFilter);

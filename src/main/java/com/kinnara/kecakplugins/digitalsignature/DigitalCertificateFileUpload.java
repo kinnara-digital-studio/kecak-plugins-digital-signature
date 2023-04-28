@@ -240,7 +240,8 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
     }
 
     protected boolean useTimeStamp() {
-        return "true".equalsIgnoreCase(getPropertyString("useTimeStamp"));
+//        return "true".equalsIgnoreCase(getPropertyString("useTimeStamp"));
+        return true;
     }
 
 
