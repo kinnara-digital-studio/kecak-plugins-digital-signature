@@ -4,7 +4,7 @@
     <groupId>com.kinnara.kecakplugins.digitalsignature</groupId>
     <artifactId>kecak-plugins-digital-signature</artifactId>
     <packaging>bundle</packaging>
-    <version>1.0.0</version>
+    <version>3.0.0</version>
     <name>kecak-plugins-digital-signature</name>
     <url>http://www.kecak.org</url>
     <scm>
