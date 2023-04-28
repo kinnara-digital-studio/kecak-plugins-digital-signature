@@ -46,48 +46,49 @@
 		    left: 0;
 		}
 	</style>
-	<div style="text-align:center;background-color: #5480fb;color: #e5e5ef;">
-        <span class="md-btn md-btn-secondary prev" style="cursor:pointer;">
-            <i class="fa fa-angle-left"></i>
-            Prev
-        </span>
-        ||
-        <span class="md-btn md-btn-secondary next" style="cursor:pointer;">
-            <i class="fa fa-angle-right"></i>
-            Next
-        </span>
-        &nbsp; &nbsp;
-        <span>Page: <span class="page_num"></span> / <span class="page_count"></span></span>
-    </div>
-	<div id="document-container-${uniqueKey}" style="width:750px;height:600px;overflow-y:scroll;background: gray">
-		<div class="wrapper">
-            <canvas id="pdf-canvas-${uniqueKey}" width="100%" height="500px" style="display:block;cursor:pointer;cursor: hand;"></canvas>
-            <canvas id="stamp-canvas-${uniqueKey}"></canvas>
-        </div>
-        <div class="uk-panel uk-panel-box" id="signature-or-initial">
-			<div class="item">
-				<img src="" alt="Signature" data-tipe="1" >
-			</div>
-		</div>
-
-	    <!--
-		<div style="text-align:center;background-color: #5480fb;color: #e5e5ef;">
-			<span class="md-btn md-btn-secondary prev" style="cursor:pointer;">
-				<i class="fa fa-angle-left"></i>
-				Previous
-			</span>
-			||
-  			<span class="md-btn md-btn-secondary next" style="cursor:pointer;">
-  				<i class="fa fa-angle-right"></i>
-  				Next
-  			</span>
+	<div class="form-cell">
+        <div style="text-align:center;background-color: #5480fb;color: #e5e5ef;">
+            <span class="md-btn md-btn-secondary prev" style="cursor:pointer;">
+                <i class="fa fa-angle-left"></i>
+                Prev
+            </span>
+            ||
+            <span class="md-btn md-btn-secondary next" style="cursor:pointer;">
+                <i class="fa fa-angle-right"></i>
+                Next
+            </span>
             &nbsp; &nbsp;
-  			<span>Page: <span class="page_num"></span> / <span class="page_count"></span></span>
-		</div>
-		-->
+            <span>Page: <span class="page_num"></span> / <span class="page_count"></span></span>
+        </div>
+        <div id="document-container-${uniqueKey}" style="width:750px;height:600px;overflow-y:scroll;background: gray">
+            <div class="wrapper">
+                <canvas id="pdf-canvas-${uniqueKey}" width="100%" height="500px" style="display:block;cursor:pointer;cursor: hand;"></canvas>
+                <canvas id="stamp-canvas-${uniqueKey}"></canvas>
+            </div>
+            <div class="uk-panel uk-panel-box" id="signature-or-initial">
+                <div class="item">
+                    <img src="" alt="Signature" data-tipe="1" >
+                </div>
+            </div>
+
+            <!--
+            <div style="text-align:center;background-color: #5480fb;color: #e5e5ef;">
+                <span class="md-btn md-btn-secondary prev" style="cursor:pointer;">
+                    <i class="fa fa-angle-left"></i>
+                    Previous
+                </span>
+                ||
+                <span class="md-btn md-btn-secondary next" style="cursor:pointer;">
+                    <i class="fa fa-angle-right"></i>
+                    Next
+                </span>
+                &nbsp; &nbsp;
+                <span>Page: <span class="page_num"></span> / <span class="page_count"></span></span>
+            </div>
+            -->
+        </div>
+        <input id="${elementParamName!}_${uniqueKey!}" name="${elementParamName!}" type="hidden" value="1;0;0;1;1">
 	</div>
-	<input id="${elementParamName!}_${uniqueKey!}" name="${elementParamName!}" type="hidden" value="1;0;0;1;1">
-	
 	<script>
 		$(document).ready(function(){
 			var url = "${request.contextPath}${pdfFile!?html}";
