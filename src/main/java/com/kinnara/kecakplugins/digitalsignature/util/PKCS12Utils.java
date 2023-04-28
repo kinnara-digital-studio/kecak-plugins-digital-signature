@@ -230,8 +230,8 @@ public interface PKCS12Utils extends AuditTrailUtil {
     }
 
     default char[] getPassword() {
-//        SetupManager sm = (SetupManager) SecurityUtil.getApplicationContext().getBean("setupManager");
-        String password = SetupManager.getSettingValue("securityKey");
+        SetupManager sm = (SetupManager) SecurityUtil.getApplicationContext().getBean("setupManager");
+        String password = sm.getSettingValue("securityKey");
         return (password.isEmpty() ? DEFAULT_PASSWORD : password).toCharArray();
     }
 

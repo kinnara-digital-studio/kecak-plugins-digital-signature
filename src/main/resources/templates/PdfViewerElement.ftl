@@ -140,7 +140,7 @@
 								selection: false
 							});
 								
-							fabric.Image.fromURL('${stampFile!?html}', function(img){
+							fabric.Image.fromURL('${request.contextPath}${stampFile!?html}', function(img){
 								fobject.add(img);
 								fobject.on('object:moving', onStampChange, false);
 								fobject.on('object:scaling', onStampChange, false);
