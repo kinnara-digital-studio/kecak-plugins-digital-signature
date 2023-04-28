@@ -1,18 +1,14 @@
 package com.kinnara.kecakplugins.digitalsignature.util;
 
-import com.itextpdf.bouncycastle.cert.ocsp.BasicOCSPRespBC;
-import com.itextpdf.commons.bouncycastle.cert.ocsp.IBasicOCSPResp;
 import com.itextpdf.forms.PdfAcroForm;
-import com.itextpdf.kernel.pdf.*;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfReader;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.kernel.pdf.StampingProperties;
 import com.itextpdf.signatures.*;
 import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateException;
 import com.kinnara.kecakplugins.digitalsignature.webapi.GetTimeStampApi;
-import com.kinnarastudio.commons.Try;
-import com.lowagie.text.pdf.TSAClient;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
-import com.lowagie.text.DocumentException;
-import com.lowagie.text.pdf.AcroFields;
-import com.lowagie.text.pdf.PdfStamper;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.ExtendedKeyUsage;
 import org.bouncycastle.asn1.x509.KeyPurposeId;
@@ -37,10 +33,11 @@ import org.javatuples.Pair;
 import org.joget.commons.util.LogUtil;
 import org.joget.commons.util.SecurityUtil;
 import org.joget.commons.util.SetupManager;
-import org.kecak.apps.exception.ApiException;
 
-import javax.servlet.http.HttpServletResponse;
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.security.*;
@@ -50,7 +47,6 @@ import java.security.cert.X509Certificate;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public interface PKCS12Utils extends AuditTrailUtil {
