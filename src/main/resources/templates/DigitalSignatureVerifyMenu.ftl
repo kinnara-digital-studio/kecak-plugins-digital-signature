@@ -15,7 +15,7 @@
         </div>
 
         <div>
-            <form action="./dummy.html" class="dropzone well" id="dropzone">
+            <form action="#" class="dropzone well" id="dropzone">
                 <div class="fallback">
                     <input name="file" type="file" multiple="" />
                 </div>

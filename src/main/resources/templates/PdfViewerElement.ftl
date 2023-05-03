@@ -48,14 +48,19 @@
 	</style>
 	<div class="form-cell">
         <div style="text-align:center;background-color: #5480fb;color: #e5e5ef;">
+            <span class="md-btn md-btn-secondary" onclick="downloadpdf()" style="cursor:pointer;">
+                <i class="fa fa-download"></i>
+                Download
+           </span>
+
             <span class="md-btn md-btn-secondary prev" style="cursor:pointer;">
                 <i class="fa fa-angle-left"></i>
                 Prev
             </span>
             ||
             <span class="md-btn md-btn-secondary next" style="cursor:pointer;">
-                <i class="fa fa-angle-right"></i>
                 Next
+                <i class="fa fa-angle-right"></i>
             </span>
             &nbsp; &nbsp;
             <span>Page: <span class="page_num"></span> / <span class="page_count"></span></span>
@@ -204,7 +209,6 @@
 				queueRenderPage(pageNum);
 			}
 			$('.prev').on('click', onPrevPage);
-
 			function onNextPage() {
 				if (pageNum >= pdfDoc.numPages) {
 					return;
@@ -222,8 +226,11 @@
 			
 					// Initial/first page rendering
 					renderPage(pageNum);
-            })
-			.catch(console.error);
+            }).catch(console.error);
+            
+            function downloadPDF(){
+                window.open('${request.contextPath}${pdfFile!?html}?attachment=true'); // it will open download of filepath
+            }
 		});
 	
 	</script>
