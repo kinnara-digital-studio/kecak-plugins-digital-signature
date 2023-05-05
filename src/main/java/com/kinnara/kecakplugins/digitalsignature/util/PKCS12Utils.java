@@ -44,6 +44,7 @@ import org.joget.commons.util.SecurityUtil;
 import org.joget.commons.util.SetupManager;
 import org.kecak.apps.exception.ApiException;
 
+import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.math.BigInteger;
@@ -328,13 +329,11 @@ public interface PKCS12Utils extends AuditTrailUtil {
                 tsaClient = null;
             }
 
-            LogUtil.info(getClass().getName(), "TSA Client : " + tsaClient);
-
             IOcspClient ocspClient = getOcspClient();
+            Collection<ICrlClient> crlList = Collections.singletonList(new CrlClientOnline());
 
             signPdf(userFullname, pdfFile, pdfFile, chain, privateKey, DigestAlgorithms.SHA256, provider.getName(), PdfSigner.CryptoStandard.CMS,
-                    reason, organization, null, ocspClient, tsaClient, 0);
-//            makeLtvEnable(pdfFile, pdfFile);
+                    reason, organization, crlList, ocspClient, tsaClient, 0);
         }
     }
 
@@ -367,23 +366,19 @@ public interface PKCS12Utils extends AuditTrailUtil {
 
         try (PdfReader reader = new PdfReader(sourcePdfFile);
              PdfWriter writer = new PdfWriter(tempFile);
-             PdfDocument document = new PdfDocument(reader, writer)) {
+             PdfDocument document = new PdfDocument(reader, writer, new StampingProperties().preserveEncryption().useAppendMode())) {
 
             LogUtil.debug(getClass().getName(), "Creating temp file [" + tempFile.getAbsolutePath() + "]");
         }
 
-        try (PdfReader reader = new PdfReader(tempFile);
-//             PdfWriter writer = new PdfWriter(destPdfFile);
-//             PdfDocument pdfDocument = new PdfDocument(reader, writer);
-             PdfReader pdfReader = new PdfReader(tempFile);
+        try (PdfReader pdfReader = new PdfReader(tempFile);
              OutputStream fos = Files.newOutputStream(destPdfFile.toPath())) {
 
-
-            PdfSigner signer = new PdfSigner(pdfReader, fos, new StampingProperties().useAppendMode());
+            final PdfSigner signer = new PdfSigner(pdfReader, fos, new StampingProperties().preserveEncryption().useAppendMode());
             signer.setFieldName(name);
             signer.setSignDate(Calendar.getInstance());
 
-            PdfSignatureAppearance signatureAppearance = signer.getSignatureAppearance();
+            final PdfSignatureAppearance signatureAppearance = signer.getSignatureAppearance();
             signatureAppearance.setReason(reason).setLocation(location);
 
             IExternalSignature pks = new PrivateKeySignature(pk, digestAlgorithm, provider);
@@ -395,7 +390,7 @@ public interface PKCS12Utils extends AuditTrailUtil {
     }
 
     default void ltvEnable(PdfSigner signer, ByteArrayOutputStream baos, OutputStream os, String name,
-                                  OcspClientBouncyCastle ocspClient, CrlClientOnline crlClient, ITSAClient tsc) {
+                           OcspClientBouncyCastle ocspClient, CrlClientOnline crlClient, ITSAClient tsc) {
         ByteArrayInputStream signedPdfInput = new ByteArrayInputStream(baos.toByteArray());
         try {
             PdfReader pdfReader = new PdfReader(signedPdfInput);
@@ -439,7 +434,7 @@ public interface PKCS12Utils extends AuditTrailUtil {
 
         try (PdfReader reader = new PdfReader(src);
              PdfWriter writer = new PdfWriter(tempFile);
-             PdfDocument document = new PdfDocument(reader, writer)){
+             PdfDocument document = new PdfDocument(reader, writer)) {
             LogUtil.debug(getClass().getName(), "Creating temp file [" + tempFile.getAbsolutePath() + "]");
         }
 
@@ -550,7 +545,7 @@ public interface PKCS12Utils extends AuditTrailUtil {
     }
 
     default IOcspClient getOcspClient() {
-        return null;
+        return new OcspClientBouncyCastle(null);
 //        try (PdfReader reader = new PdfReader(pdfFile);
 //             PdfDocument document = new PdfDocument(reader)) {
 //
@@ -574,23 +569,28 @@ public interface PKCS12Utils extends AuditTrailUtil {
     default void makeLtvEnable(File sourcePdfFile, File destPdfFile) throws IOException {
         final Date now = new Date();
         final File tempFile = new File(destPdfFile.getAbsolutePath() + ".temp" + new SimpleDateFormat(DATETIME_FORMAT).format(now));
-        LogUtil.info(getClass().getName(), "test LTV Enabling ...");
         try (PdfReader reader = new PdfReader(sourcePdfFile);
              PdfWriter writer = new PdfWriter(tempFile);
-             PdfDocument document = new PdfDocument(reader, writer)) {
+             PdfDocument document = new PdfDocument(reader, writer, new StampingProperties().preserveEncryption().useAppendMode())) {
 
             LogUtil.debug(getClass().getName(), "Creating temp file [" + tempFile.getAbsolutePath() + "]");
         }
 
-        try (   PdfReader pdfReader = new PdfReader(tempFile);
-                PdfWriter pdfWriter = new PdfWriter(destPdfFile);
-                PdfDocument pdfDocument = new PdfDocument(pdfReader, pdfWriter,
-                        new StampingProperties().preserveEncryption().useAppendMode())) {
+        try (PdfReader pdfReader = new PdfReader(tempFile);
+             PdfWriter pdfWriter = new PdfWriter(destPdfFile);
+             PdfDocument pdfDocument = new PdfDocument(pdfReader, pdfWriter,
+                     new StampingProperties().preserveEncryption().useAppendMode())) {
+
             AdobeLtvEnabling adobeLtvEnabling = new AdobeLtvEnabling(pdfDocument);
-            IOcspClient ocsp = new OcspClientBouncyCastle(null);
+            IOcspClient ocsp = getOcspClient();
             ICrlClient crl = new CrlClientOnline();
             adobeLtvEnabling.enable(ocsp, crl);
-        } catch (OCSPException | GeneralSecurityException | StreamParsingException | IOException | OperatorException e) {
+
+            if (tempFile.delete()) {
+                LogUtil.debug(getClass().getName(), "Temp file [" + tempFile.getAbsolutePath() + "] has been deleted");
+            }
+        } catch (OCSPException | GeneralSecurityException | StreamParsingException | IOException |
+                 OperatorException e) {
             LogUtil.error(getClass().getName(), e, e.getMessage());
         }
 

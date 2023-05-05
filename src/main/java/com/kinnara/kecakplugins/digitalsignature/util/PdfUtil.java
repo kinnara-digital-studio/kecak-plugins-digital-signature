@@ -17,9 +17,9 @@ import org.springframework.util.ResourceUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Nonnull;
-import javax.imageio.ImageIO;
 import java.io.*;
 import java.net.URL;
+import java.nio.file.Files;
 import java.util.Collections;
 import java.util.Map;
 
@@ -68,11 +68,11 @@ public interface PdfUtil extends AuditTrailUtil{
             final PdfCanvas canvas = new PdfCanvas(pdfPage);
             final float bottom = pageHeight - top - (stampHeight * yScale);
 
-            final AffineTransform t = AffineTransform.getTranslateInstance(left, bottom);
-            t.scale(stampImageData.getWidth() * xScale, stampImageData.getHeight() * yScale);
+            final AffineTransform transform = AffineTransform.getTranslateInstance(left, bottom);
+            transform.scale(stampImageData.getWidth() * xScale, stampImageData.getHeight() * yScale);
 
             final float[] matrix = new float[6];
-            t.getMatrix(matrix);
+            transform.getMatrix(matrix);
 
             canvas.addImageWithTransformationMatrix(stampImageData, matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], false);
 
