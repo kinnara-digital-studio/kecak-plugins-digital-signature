@@ -1,20 +1,13 @@
 package com.kinnara.kecakplugins.digitalsignature.util;
 
-import com.itextpdf.bouncycastle.cert.ocsp.BasicOCSPRespBC;
-import com.itextpdf.commons.bouncycastle.cert.ocsp.IBasicOCSPResp;
 import com.itextpdf.forms.PdfAcroForm;
 import com.itextpdf.kernel.pdf.*;
 import com.itextpdf.signatures.*;
 import com.kinnara.kecakplugins.digitalsignature.AdobeLtvEnabling;
 import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateException;
 import com.kinnara.kecakplugins.digitalsignature.webapi.GetTimeStampApi;
-import com.kinnarastudio.commons.Try;
-import com.lowagie.text.pdf.TSAClient;
 import org.apache.commons.io.IOUtils;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
-import com.lowagie.text.DocumentException;
-import com.lowagie.text.pdf.AcroFields;
-import com.lowagie.text.pdf.PdfStamper;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.ExtendedKeyUsage;
 import org.bouncycastle.asn1.x509.KeyPurposeId;
@@ -42,10 +35,7 @@ import org.javatuples.Pair;
 import org.joget.commons.util.LogUtil;
 import org.joget.commons.util.SecurityUtil;
 import org.joget.commons.util.SetupManager;
-import org.kecak.apps.exception.ApiException;
 
-import javax.annotation.Nullable;
-import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.math.BigInteger;
 import java.nio.file.Files;
@@ -56,7 +46,6 @@ import java.security.cert.X509Certificate;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public interface PKCS12Utils extends AuditTrailUtil {
@@ -76,9 +65,8 @@ public interface PKCS12Utils extends AuditTrailUtil {
     String DEFAULT_DN_LOCALITY = "Bandung";
     String DEFAULT_DN_STATE = "West Java";
     String DEFAULT_DN_COUNTRY = "ID";
-
+    String TSA_POLICY_ID = "1.0.0.0.0.0";
     String LOCAL_TSA_URL = "http://localhost:8080/web/json/plugin/" + GetTimeStampApi.class.getName() + "/service";
-
 
     /**
      * @param keystoreFile
@@ -496,12 +484,11 @@ public interface PKCS12Utils extends AuditTrailUtil {
                 .orElseThrow(() -> new DigitalCertificateException("Error retrieving root certificate"));
 
         SignerInfoGenerator signerInfoGenerator = signerInfoGeneratorBuilder.build(SIGNATURE_ALGORITHM, extractedKs.getValue1(), rootCertificate);
-        String policyId = getClass().getPackage().getImplementationVersion();
 
         DigestCalculator digestCalculator = new JcaDigestCalculatorProviderBuilder().build()
                 .get(CertificateID.HASH_SHA1);
 
-        TimeStampTokenGenerator tokenGenerator = new TimeStampTokenGenerator(signerInfoGenerator, digestCalculator, new ASN1ObjectIdentifier(policyId));
+        TimeStampTokenGenerator tokenGenerator = new TimeStampTokenGenerator(signerInfoGenerator, digestCalculator, new ASN1ObjectIdentifier(TSA_POLICY_ID));
         TimeStampResponseGenerator responseGenerator = new TimeStampResponseGenerator(tokenGenerator, TSPAlgorithms.ALLOWED);
 
         Date now = new Date();
