@@ -34,7 +34,10 @@ import java.security.KeyStore;
 import java.security.cert.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static com.sun.org.apache.xalan.internal.xsltc.compiler.sym.error;
 
 public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unclutter, PKCS12Utils {
 
@@ -66,7 +69,10 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
 
             LogUtil.info(getClass().getName(), "Executing Rest API [" + servletRequest.getRequestURI() + "] in method [" + servletRequest.getMethod() + "] contentType [" + servletRequest.getContentType() + "] as [" + WorkflowUtil.getCurrentUsername() + "]");
 
-            final List<Map<String, Object>> data = FileStore.getFileMap().values().stream()
+            final List<Map<String, Object>> data = Optional.of(FileStore.getFileMap())
+                    .map(Map::values)
+                    .map(Collection::stream)
+                    .orElseGet(Stream::empty)
 
                     // unbox deep stream
                     .flatMap(Arrays::stream)
@@ -90,8 +96,6 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
                     .orElse(Collections.emptyList());
             final JSONObject responseBody = new JSONObject();
             responseBody.put("Data", data);
-
-//            responseBody.put("message", "UNDER DEVELOPMENT");
             servletResponse.setStatus(HttpServletResponse.SC_OK);
             servletResponse.getWriter().write(responseBody.toString());
         } catch (ApiException e) {
@@ -150,11 +154,10 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
         final Map<String, Object> signatureData = new HashMap<>();
         signatureData.put("signatureName", name);
 
-        final List<VerificationException> finalError = new ArrayList<>();
-
-        File rootKeystore = Optional.ofNullable(rootFolder.listFiles())
+        final Optional<Pair<File, List<VerificationException>>> optError = Optional.of(rootFolder)
+                .map(File::listFiles)
                 .map(Arrays::stream)
-                .orElse(Stream.empty())
+                .orElseGet(Stream::empty)
                 .filter(f -> f.getName().endsWith("_" + ROOT_KEYSTORE))
                 .sorted(Comparator.comparing(File::getName))
                 .map(Try.onFunction(file -> {
@@ -166,21 +169,16 @@ public class VerifyApi extends ExtDefaultPlugin implements PluginWebSupport, Unc
                     }
                 }))
                 .filter(Objects::nonNull)
-                .map(Try.onFunction(p -> {
-                    final List<VerificationException> errors = CertificateVerification.verifyCertificates(certs, p.getValue1(), cal);
-
-                    finalError.clear();
-                    finalError.addAll(errors);
-
-                    return Pair.with(p.getValue0(), errors);
-                }))
+                .map(Try.onFunction(p -> Pair.with(p.getValue0(), CertificateVerification.verifyCertificates(certs, p.getValue1(), cal))))
                 .filter(Objects::nonNull)
                 .filter(p -> p.getValue1().isEmpty())
-                .map(Pair::getValue0)
-                .findFirst()
-                .orElseThrow(() -> new DigitalCertificateVerificationException(finalError));
+                .findFirst();
 
-        LogUtil.info(getClass().getName(), "Verified using root [" + rootKeystore.getName() +"]");
+        if(optError.isPresent()) {
+            final DigitalCertificateVerificationException e = new DigitalCertificateVerificationException(optError.get().getValue1());
+            LogUtil.error(getClass().getName(), e, "Error found when checking with keystore [" + optError.get().getValue0().getPath() + "]");
+            throw e;
+        }
 
         // Find out if certificates were valid on the signing date, and if they are still valid today
         final List<Map<String, String>> rootList = new ArrayList<>();
