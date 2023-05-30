@@ -48,7 +48,7 @@
 	</style>
 	<div class="form-cell">
         <div style="text-align:center;background-color: #5480fb;color: #e5e5ef;">
-            <span class="md-btn md-btn-secondary" onclick="downloadpdf()" style="cursor:pointer;">
+            <span class="md-btn md-btn-secondary" onclick="downloadPDF()" style="cursor:pointer;">
                 <i class="fa fa-download"></i>
                 Download
            </span>
@@ -227,7 +227,7 @@
 					// Initial/first page rendering
 					renderPage(pageNum);
             }).catch(console.error);
-            
+
             function downloadPDF(){
                 window.open('${request.contextPath}${pdfFile!?html}?attachment=true'); // it will open download of filepath
             }
