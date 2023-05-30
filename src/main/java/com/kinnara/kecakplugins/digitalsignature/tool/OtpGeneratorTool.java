@@ -2,6 +2,7 @@ package com.kinnara.kecakplugins.digitalsignature.tool;
 
 import com.kinnara.kecakplugins.digitalsignature.util.OtpUtil;
 import org.joget.apps.app.model.AppDefinition;
+import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.dao.FormDataDao;
 import org.joget.apps.form.model.FormRow;
 import org.joget.apps.form.model.FormRowSet;
@@ -15,6 +16,7 @@ import org.joget.workflow.util.WorkflowUtil;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
+import java.util.ResourceBundle;
 
 /**
  * @author aristo
@@ -29,7 +31,9 @@ public class OtpGeneratorTool extends DefaultApplicationPlugin implements OtpUti
 
     @Override
     public String getVersion() {
-        return getClass().getPackage().getImplementationVersion();
+        PluginManager pluginManager = (PluginManager) AppUtil.getApplicationContext().getBean("pluginManager");
+        ResourceBundle resourceBundle = pluginManager.getPluginMessageBundle(getClass().getName(), "/message/BuildNumber");
+        return resourceBundle.getString("buildNumber");
     }
 
     @Override

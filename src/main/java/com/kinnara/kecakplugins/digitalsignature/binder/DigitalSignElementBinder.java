@@ -224,7 +224,7 @@ public class DigitalSignElementBinder extends FormBinder implements FormStoreBin
      */
     protected void generateUserKey(File userKeystore, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException, UnrecoverableKeyException, DigitalCertificateException {
         KeyPair generatedKeyPair = generateKeyPair();
-        String subjectDn = getDn(userFullname, getOrganizationalUnit(), getOrganization(), getLocality(), getStateOrProvince(), getCountry());
+        String subjectDn = getDn(userFullname, getOrganizationalUnit().replace(",", " "), getOrganization().replace(",", " "), getLocality().replace(",", " "), getStateOrProvince().replace(",", " "), getCountry().replace(",", " "));
         generatePKCS12(userKeystore, pass, generatedKeyPair, subjectDn, false);
     }
 

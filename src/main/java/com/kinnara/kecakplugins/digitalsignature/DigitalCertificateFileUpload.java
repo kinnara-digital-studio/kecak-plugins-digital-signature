@@ -125,7 +125,7 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
      */
     public void generateUserKey(File certificateFile, char[] pass, String userFullname) throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, OperatorCreationException, ParseException, UnrecoverableKeyException, DigitalCertificateException {
         KeyPair generatedKeyPair = generateKeyPair();
-        String subjectDn = getDn(userFullname, getOrganizationalUnit(), getOrganization(), getLocality(), getStateOrProvince(), getCountry());
+        String subjectDn = getDn(userFullname.replace(",", " "), getOrganizationalUnit().replace(",", " "), getOrganization().replace(",", " "), getLocality().replace(",", " "), getStateOrProvince().replace(",", " "), getCountry().replace(",", " "));
         generatePKCS12(certificateFile, pass, generatedKeyPair, subjectDn, false);
     }
 
@@ -240,7 +240,8 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
     }
 
     protected boolean useTimeStamp() {
-        return "true".equalsIgnoreCase(getPropertyString("useTimeStamp"));
+//        return "true".equalsIgnoreCase(getPropertyString("useTimeStamp"));
+        return true;
     }
 
 
