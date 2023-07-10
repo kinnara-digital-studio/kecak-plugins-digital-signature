@@ -15,7 +15,7 @@
         </div>
 
         <div>
-            <form action="#" class="dropzone well" id="dropzone">
+            <form  class="dropzone well" id="dropzone">
                 <div class="fallback">
                     <input name="file" type="file" multiple="" />
                 </div>
@@ -71,95 +71,52 @@
 
 <!-- page specific plugin scripts -->
 <script type="text/javascript" src="${request.contextPath}/plugin/${className}/dropzone/dropzone.min.js"></script>
-
-<!-- inline scripts related to this page -->
 <script type="text/javascript">
-    jQuery(function($){
+Dropzone.autoDiscover = false;
+var myDropzone = new Dropzone("#dropzone", {
 
-    try {
-      Dropzone.autoDiscover = false;
+  url: "${request.contextPath!}/web/json/plugin/com.kinnara.kecakplugins.digitalsignature.webapi.VerifyApi/service", // Replace with your upload URL
+  addRemoveLinks : true,
+  //autoProcessQueue: false, // Disable auto processing on drop
 
-      var myDropzone = new Dropzone('#dropzone', {
-        previewTemplate: $('#preview-template').html(),
+  init: function () {
+    this.on("drop", function () {
 
-        thumbnailHeight: 120,
-        thumbnailWidth: 120,
-        maxFilesize: 0.5,
-
-        addRemoveLinks : true,
-        dictRemoveFile: 'Remove',
-
-        dictDefaultMessage :
-        '<span class="bigger-150 bolder"><i class="ace-icon fa fa-caret-right red"></i> Drop files</span> to upload \
-        <span class="smaller-80 grey">(or click)</span> <br /> \
-        <i class="upload-icon ace-icon fa fa-cloud-upload blue fa-3x"></i>'
-    ,
-
-        thumbnail: function(file, dataUrl) {
-          if (file.previewElement) {
-            $(file.previewElement).removeClass("dz-file-preview");
-            var images = $(file.previewElement).find("[data-dz-thumbnail]").each(function() {
-                var thumbnailElement = this;
-                thumbnailElement.alt = file.name;
-                thumbnailElement.src = dataUrl;
+              //this.removeAllFiles(); // Clear the existing files from the queue
+              this.processQueue(); // Process the dropped files
             });
-            setTimeout(function() { $(file.previewElement).addClass("dz-image-preview"); }, 1);
-          }
-        }
 
-      });
+            this.on("addedfile", function (file) {
+              console.log("File added: " + file.name);
+            });
 
-      myDropzone.on("dragend", function(file) {
-         console.log("ondragend");
-      });
-      //simulating upload progress
-      var minSteps = 6,
-          maxSteps = 60,
-          timeBetweenSteps = 100,
-          bytesPerStep = 100000;
+            this.on("removedfile", function (file) {
+              console.log("File removed: " + file.name);
+            });
 
-      myDropzone.uploadFiles = function(files) {
-        var self = this;
+            this.on("success", function (file, response) {
+              console.log("File uploaded successfully!");
+              console.log(response.Data); // Log the server's response
+              var signData = response.Data;
 
-        for (var i = 0; i < files.length; i++) {
-          var file = files[i];
-              totalSteps = Math.round(Math.min(maxSteps, Math.max(minSteps, file.size / bytesPerStep)));
+              for (var i = 0; i < signData.length; i++) {
+                var obj = signData[i];
+                console.log("Signature Name :" + obj.signatureName)
 
-          for (var step = 0; step < totalSteps; step++) {
-            var duration = timeBetweenSteps * (step + 1);
-            setTimeout(function(file, totalSteps, step) {
-              return function() {
-                file.upload = {
-                  progress: 100 * (step + 1) / totalSteps,
-                  total: file.size,
-                  bytesSent: (step + 1) * file.size / totalSteps
-                };
-
-                self.emit('uploadprogress', file, file.upload.progress, file.upload.bytesSent);
-                if (file.upload.progress == 100) {
-                  file.status = Dropzone.SUCCESS;
-                  self.emit("success", file, 'success', null);
-                  self.emit("complete", file);
-                  self.processQueue();
+                var innerArray = obj.rootData;
+                for (var j = 0; j < innerArray.length; j++) {
+                  var innerObj = innerArray[j];
+                  for (var key in innerObj) {
+                    console.log(key + ": " + innerObj[key]);
+                  }
                 }
-              };
-            }(file, totalSteps, step), duration);
-          }
-        }
-       }
+                console.log("----------------------");
+                }
+            });
 
-
-       //remove dropzone instance when leaving this page in ajax mode
-       $(document).one('ajaxloadstart.page', function(e) {
-            try {
-                myDropzone.destroy();
-            } catch(e) {}
-       });
-
-    } catch(e) {
-      alert('Dropzone.js does not support older browsers!');
-      console.log("Error", e);
-    }
-
-    });
+            this.on("error", function (file, errorMessage) {
+              console.log("Error uploading file: " + errorMessage);
+            });
+  }
+})
 </script>
