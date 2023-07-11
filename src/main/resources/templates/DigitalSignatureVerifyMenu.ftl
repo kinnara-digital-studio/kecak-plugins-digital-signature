@@ -1,6 +1,13 @@
 <!-- page specific plugin styles -->
 <link rel="stylesheet" href="${request.contextPath!}/plugin/${className!}/dropzone/dropzone.min.css" />
-
+<script type="text/javascript" src="${request.contextPath}/plugin/${className}/node_modules/pdfjs-dist/build/pdf.js"/></script>
+<script type="text/javascript" src="${request.contextPath}/plugin/${className}/node_modules/fabric/dist/fabric.min.js"/></script>
+<style>
+#pdfCanvas {
+  display:none;
+  border: 1px solid #ccc;
+}
+</style>
 <h1>${label!} Menu</h1>
 
 <div class="row">
@@ -20,7 +27,10 @@
                     <input name="file" type="file" multiple="" />
                 </div>
             </form>
+
         </div>
+
+        <canvas id="pdfCanvas"></canvas>
 
         <div id="preview-template" class="hide">
             <div class="dz-preview dz-file-preview">
@@ -82,41 +92,79 @@ var myDropzone = new Dropzone("#dropzone", {
   init: function () {
     this.on("drop", function () {
 
-              //this.removeAllFiles(); // Clear the existing files from the queue
-              this.processQueue(); // Process the dropped files
-            });
+      //this.removeAllFiles(); // Clear the existing files from the queue
+      this.processQueue(); // Process the dropped files
+    });
 
-            this.on("addedfile", function (file) {
-              console.log("File added: " + file.name);
-            });
+    this.on("addedfile", function (file) {
+      console.log("File added: " + file.name);
 
-            this.on("removedfile", function (file) {
-              console.log("File removed: " + file.name);
-            });
+      if (file.type === 'application/pdf') {
+            var reader = new FileReader();
 
-            this.on("success", function (file, response) {
-              console.log("File uploaded successfully!");
-              console.log(response.Data); // Log the server's response
-              var signData = response.Data;
+            reader.onload = function(e) {
+              var pdfData = new Uint8Array(e.target.result);
 
-              for (var i = 0; i < signData.length; i++) {
-                var obj = signData[i];
-                console.log("Signature Name :" + obj.signatureName)
+              // Render the PDF on the canvas
+              renderPDF(pdfData);
+            };
 
-                var innerArray = obj.rootData;
-                for (var j = 0; j < innerArray.length; j++) {
-                  var innerObj = innerArray[j];
-                  for (var key in innerObj) {
-                    console.log(key + ": " + innerObj[key]);
-                  }
-                }
-                console.log("----------------------");
-                }
-            });
+            reader.readAsArrayBuffer(file);
+          }
+    });
 
-            this.on("error", function (file, errorMessage) {
-              console.log("Error uploading file: " + errorMessage);
-            });
+    this.on("removedfile", function (file) {
+      document.getElementById('pdfCanvas').style.display="none";
+      console.log("File removed: " + file.name);
+    });
+
+    this.on("success", function (file, response) {
+      console.log("File uploaded successfully!");
+      document.getElementById('pdfCanvas').style.display="block";
+      //console.log(response.Data); // Log the server's response
+      var signData = response.Data;
+
+      for (var i = 0; i < signData.length; i++) {
+        var obj = signData[i];
+        console.log("Signature Name :" + obj.signatureName)
+
+        var innerArray = obj.rootData;
+        for (var j = 0; j < innerArray.length; j++) {
+          var innerObj = innerArray[j];
+          for (var key in innerObj) {
+            console.log(key + ": " + innerObj[key]);
+          }
+        }
+        console.log("----------------------");
+        }
+    });
+
+    this.on("error", function (file, errorMessage) {
+      console.log("Error uploading file: " + errorMessage);
+    });
   }
 })
+
+function renderPDF(pdfData) {
+pdfjsLib.GlobalWorkerOptions.workerSrc = "${request.contextPath}/plugin/${className}/node_modules/pdfjs-dist/build/pdf.worker.js";
+  pdfjsLib.getDocument(pdfData).promise.then(function(pdf) {
+    // Get the first page of the PDF
+    pdf.getPage(1).then(function(page) {
+      var canvas = document.getElementById('pdfCanvas');
+      var context = canvas.getContext('2d');
+      var viewport = page.getViewport({ scale: 1 });
+
+      // Set the canvas size to match the PDF page
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+
+      // Render the PDF page on the canvas
+      var renderContext = {
+        canvasContext: context,
+        viewport: viewport,
+      };
+      page.render(renderContext);
+    });
+  });
+}
 </script>
