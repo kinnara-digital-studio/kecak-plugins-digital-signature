@@ -33,6 +33,12 @@
                           font-weight: bold;
                           color: #454545;
                         }
+
+                        .ui-accordion-header-icon.ui-state-active{
+                          /* Add your text styling for the active panel here */
+                          font-weight: bold;
+                          color: #454545;
+                        }
                     </style>
                     <div id="file-pdf" class="form-fileupload dropzone dz-clickable" style="width:'100%';"></div>
                     <!--<input name="file" type="file" id="file-pdf" multiple="false" class="form-fileupload dropzone dz-clickable" />-->
@@ -73,7 +79,8 @@
 
                             this.on("removedfile", function (file) {
                               document.getElementById('pdfCanvas').style.display="none";
-                              console.log("File removed: " + file.name);
+                              document.getElementById('verify-result').style.display="none";
+                              //console.log("File removed: " + file.name);
                             });
 
                             this.on("success", function (file, response) {
@@ -93,37 +100,26 @@
                                         //console.log(obj.rootData);
 
                                         result +='<h4 class="accordion-header">'+ obj.signatureName+'</h4>';
-                                        result +='<div class="accordion-content"><table><thead><tr><th colspan="2">Datail Signature</th></tr></thead><tbody>';
+                                        result +='<div class="accordion-content"><table><thead><tr><th> Certificate Detail</th></tr></thead><tbody><tr><td>';
 
                                         var innerArray = obj.rootData;
                                         for (var j = 0; j < innerArray.length; j++) {
-
                                           var innerObj = innerArray[j];
-
-                                        //  console.log(innerObj.certificateDetail);
-
-                                         // var issuer=innerObj.issuer;
-
-                                         // var keyValuePairs = issuer.split(',').map(function(item) {
-                                         //   var parts = item.split('=');
-                                         //   return { [parts[0]]: parts[1] };
-                                         // });
-
-                                         // console.log(keyValuePairs);
-
-                                          for (var key in innerObj) {
-                                            console.log(key + ": " + innerObj[key]);
-                                            result +='<tr><td>'+ key + '</td><td>' + innerObj[key] +'</td></tr>';
-                                          }
+                                           result +='<table><tr><td>Subject</td><td>'+innerObj.subject+'</td></tr><tr><td>Certificate Status</td><td>'+innerObj.certificateStatus+'</td></tr><tr><td>Certificate Detail</td><td>'+innerObj.certificateDetail+'</td></tr><tr><td>Valid From</td><td>'+innerObj.validFrom+'</td></tr><tr><td>Valid To</td><td>'+innerObj.validTo+'</td></tr><tr><td>Issuer</td><td>'+innerObj.issuer+'</td></tr><tr><td colspan="2" style="background-color: #c5c5c5; height: 20px;"></td></tr></table>';
+                                          //for (var key in innerObj) {
+                                          //  console.log(key + ": " + innerObj[key]);
+                                           // result +='<tr><td>'+ key + '</td><td>' + innerObj[key] +'</td></tr>';
+                                          //}
                                         }
-                                        result +='</tbody></table></div>';
+                                        result +='</td></tr></tbody></table></div>';
                                         console.log("----------------------");
                                     }
 
                                     var targetElement = document.getElementById('verify-result');
                                     targetElement.innerHTML = result;
+                                    document.getElementById('verify-result').style.display="block";
                                     $("#verify-result").accordion();
-                                    console.log(result);
+
                                 }
                             });
 
