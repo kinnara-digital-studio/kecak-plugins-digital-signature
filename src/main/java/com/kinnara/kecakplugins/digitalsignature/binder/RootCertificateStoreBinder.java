@@ -1,4 +1,4 @@
-package com.kinnara.kecakplugins.digitalsignature;
+package com.kinnara.kecakplugins.digitalsignature.binder;
 
 import com.kinnara.kecakplugins.digitalsignature.util.PKCS12Utils;
 import org.bouncycastle.util.encoders.Base64;
@@ -17,6 +17,9 @@ import java.security.cert.CertificateFactory;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.ResourceBundle;
 
+/**
+ * Binder to store root certificate
+ */
 public class RootCertificateStoreBinder extends FormBinder implements FormStoreElementBinder, PKCS12Utils {
     @Override
     public FormRowSet store(Element element, FormRowSet formRowSet, FormData formData) {
@@ -29,24 +32,25 @@ public class RootCertificateStoreBinder extends FormBinder implements FormStoreE
         LogUtil.info(getClassName(), "pk path from rowset : " + pathKey);
 
 
-        URL baseUrl = null;
+
         try {
-            baseUrl = ResourceUtils.getURL(PATH_ROOT);
-            File folder = new File(baseUrl.getPath());
+            final URL baseUrl = ResourceUtils.getURL(PATH_ROOT);
+            final File folder = new File(baseUrl.getPath());
             if (!folder.exists()) {
                 folder.mkdirs();
             }
 
             //get certificate
-            CertificateFactory fac = CertificateFactory.getInstance("X509");
-            FileInputStream fis = new FileInputStream(FileManager.getBaseDirectory() + "/" + pathCert);
-            final Certificate certificate = fac.generateCertificate(fis);
+            final CertificateFactory fac = CertificateFactory.getInstance("X509");
+            try(FileInputStream fis = new FileInputStream(FileManager.getBaseDirectory() + "/" + pathCert)) {
 
-            //get private key
-            final PrivateKey privateKey = getPemPrivateKey(FileManager.getBaseDirectory() + "/" + pathKey);
-            final File rootKeystore = getPathCertificateName(new File(PATH_ROOT), ROOT_KEYSTORE);
-            storeToPKCS12(rootKeystore, certificate, privateKey, null);
+                final Certificate certificate = fac.generateCertificate(fis);
 
+                //get private key
+                final PrivateKey privateKey = getPemPrivateKey(FileManager.getBaseDirectory() + "/" + pathKey);
+                final File rootKeystore = getPathCertificateName(new File(PATH_ROOT), ROOT_KEYSTORE);
+                storeToPKCS12(rootKeystore, certificate, privateKey, null);
+            }
         } catch (Exception e) {
             LogUtil.error(getClassName(), e, e.getMessage());
         }

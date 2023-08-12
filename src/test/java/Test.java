@@ -1,4 +1,4 @@
-import com.kinnara.kecakplugins.digitalsignature.DigitalCertificateFileUpload;
+import com.kinnara.kecakplugins.digitalsignature.element.FileUpload;
 import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateException;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.joget.commons.util.LogUtil;
@@ -15,7 +15,7 @@ import java.text.ParseException;
 public class Test {
 //    @org.junit.Test
     public void generateKey() throws CertificateException, NoSuchAlgorithmException, KeyStoreException, IOException, OperatorCreationException, ParseException {
-        DigitalCertificateFileUpload obj = new DigitalCertificateFileUpload() {
+        FileUpload obj = new FileUpload() {
             @Override
             protected String getStateOrProvince() {
                 return "West Java";

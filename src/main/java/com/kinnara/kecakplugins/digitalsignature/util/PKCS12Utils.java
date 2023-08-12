@@ -3,7 +3,6 @@ package com.kinnara.kecakplugins.digitalsignature.util;
 import com.itextpdf.forms.PdfAcroForm;
 import com.itextpdf.kernel.pdf.*;
 import com.itextpdf.signatures.*;
-import com.kinnara.kecakplugins.digitalsignature.AdobeLtvEnabling;
 import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateException;
 import com.kinnara.kecakplugins.digitalsignature.webapi.GetTimeStampApi;
 import org.apache.commons.io.IOUtils;
@@ -49,6 +48,7 @@ import java.util.*;
 import java.util.stream.Stream;
 
 public interface PKCS12Utils extends AuditTrailUtil {
+    String FORM_BUILDER_CATEGORY = "Digital Sign";
     String PATH_USER_CERTIFICATE = "wflow/app_certificate/";
     String PATH_ROOT = "wflow/app_certificate/root";
     String DEFAULT_PASSWORD = "SuperSecurePasswordNoOneCanBreak";

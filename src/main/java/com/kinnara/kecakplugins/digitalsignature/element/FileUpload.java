@@ -1,4 +1,4 @@
-package com.kinnara.kecakplugins.digitalsignature;
+package com.kinnara.kecakplugins.digitalsignature.element;
 
 import com.kinnara.kecakplugins.digitalsignature.exception.DigitalCertificateException;
 import com.kinnara.kecakplugins.digitalsignature.util.PKCS12Utils;
@@ -6,7 +6,6 @@ import com.kinnarastudio.commons.Try;
 import com.kinnarastudio.commons.jsonstream.JSONStream;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.joget.apps.app.service.AppUtil;
-import org.joget.apps.form.lib.FileUpload;
 import org.joget.apps.form.model.*;
 import org.joget.apps.form.service.FormUtil;
 import org.joget.commons.util.FileManager;
@@ -33,7 +32,10 @@ import java.util.*;
 import java.util.stream.Stream;
 
 
-public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Utils {
+/**
+ * Upload and sign file
+ */
+public class FileUpload extends org.joget.apps.form.lib.FileUpload implements PKCS12Utils {
 
     public final static String PATH_FORMUPLOADS = "wflow/app_formuploads/";
 
@@ -192,7 +194,7 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
 
     @Override
     public String getName() {
-        return "Digital Certificate";
+        return "File Upload";
     }
 
     @Override
@@ -219,7 +221,7 @@ public class DigitalCertificateFileUpload extends FileUpload implements PKCS12Ut
 
     @Override
     public String getFormBuilderCategory() {
-        return "Kecak";
+        return FORM_BUILDER_CATEGORY;
     }
 
     @Override

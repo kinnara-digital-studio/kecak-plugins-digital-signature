@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 import com.kinnara.kecakplugins.digitalsignature.binder.DigitalSignElementBinder;
+import com.kinnara.kecakplugins.digitalsignature.binder.RootCertificateStoreBinder;
+import com.kinnara.kecakplugins.digitalsignature.element.FileUpload;
 import com.kinnara.kecakplugins.digitalsignature.element.PdfViewerElement;
 import com.kinnara.kecakplugins.digitalsignature.menu.DigitalSignatureVerifyMenu;
 import com.kinnara.kecakplugins.digitalsignature.tool.OtpGeneratorTool;
@@ -27,7 +29,7 @@ public class Activator implements BundleActivator {
         registrationList.add(context.registerService(SignApi.class.getName(), new SignApi(), null));
         registrationList.add(context.registerService(VerifyApi.class.getName(), new VerifyApi(), null));
         registrationList.add(context.registerService(GetTimeStampApi.class.getName(), new GetTimeStampApi(), null));
-        registrationList.add(context.registerService(DigitalCertificateFileUpload.class.getName(), new DigitalCertificateFileUpload(), null));
+        registrationList.add(context.registerService(FileUpload.class.getName(), new FileUpload(), null));
         registrationList.add(context.registerService(DigitalSignElementBinder.class.getName(), new DigitalSignElementBinder(), null));
         registrationList.add(context.registerService(RootCertificateStoreBinder.class.getName(), new RootCertificateStoreBinder(), null));
         registrationList.add(context.registerService(PdfViewerElement.class.getName(), new PdfViewerElement(), null));

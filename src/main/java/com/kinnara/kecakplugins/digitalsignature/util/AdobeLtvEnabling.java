@@ -68,9 +68,6 @@ import com.itextpdf.signatures.PdfSignature;
 import com.itextpdf.signatures.SignatureUtil;
 import com.itextpdf.signatures.exceptions.SignExceptionMessageConstant;
 
-/**
- * Copy from https://github.com/mkl-public/testarea-itext7/blob/master/src/main/java/mkl/testarea/itext7/signature/AdobeLtvEnabling.java
- */
 public class AdobeLtvEnabling {
     /**
      * Use this constructor with a {@link PdfDocument} in append mode. Otherwise
@@ -90,7 +87,6 @@ public class AdobeLtvEnabling {
         List<String> names = signatureUtil.getSignatureNames();
         for (String name : names) {
             PdfPKCS7 pdfPKCS7 = signatureUtil.readSignatureData(name, BouncyCastleProvider.PROVIDER_NAME);
-//            PdfPKCS7 pdfPKCS7x = signatureUtil.verifySignature(name, BouncyCastleProvider.PROVIDER_NAME);
             PdfSignature sig = signatureUtil.getSignature(name);
 
             List<X509Certificate> certificatesToCheck = new ArrayList<>();
@@ -111,11 +107,11 @@ public class AdobeLtvEnabling {
         ValidationData validationData = new ValidationData();
 
         while (certificate != null) {
+            System.out.println(certificate.getSubjectX500Principal().getName());
             X509Certificate issuer = getIssuerCertificate(certificate);
             validationData.certs.add(certificate.getEncoded());
             byte[] ocspResponse = ocspClient.getEncoded(certificate, issuer, null);
             if (ocspResponse != null) {
-                System.out.println("  with OCSP response");
                 validationData.ocsps.add(ocspResponse);
                 X509Certificate ocspSigner = getOcspSignerCertificate(ocspResponse);
                 if (ocspSigner != null) {
@@ -125,6 +121,7 @@ public class AdobeLtvEnabling {
             } else {
                 Collection<byte[]> crl = crlClient.getEncoded(certificate, null);
                 if (crl != null && !crl.isEmpty()) {
+                    System.out.printf("  with %s CRLs\n", crl.size());
                     validationData.crls.addAll(crl);
                     for (byte[] crlBytes : crl) {
                         addLtvForChain(null, ocspClient, crlClient, getCrlHashKey(crlBytes));

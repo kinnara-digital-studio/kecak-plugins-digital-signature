@@ -129,7 +129,7 @@ public class PdfViewerElement extends Element implements FormBuilderPaletteEleme
 
     @Override
     public String getFormBuilderCategory() {
-        return "Digital Signature";
+        return FORM_BUILDER_CATEGORY;
     }
 
     @Override
